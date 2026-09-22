@@ -20,6 +20,11 @@ class Narrative(BaseModel):
     cluster_size: int
     top_tokens: list[str] = []
     sources: list[SourceRef] = []
+    # Exact mint propagated from launch/social items so the signal engine
+    # never has to guess which token a symbol refers to.
+    token_mint: Optional[str] = None
+    token_symbol: Optional[str] = None
+    token_name: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 

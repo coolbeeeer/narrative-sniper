@@ -7,6 +7,7 @@ from app.core.config import settings
 from app.api import router as api_router
 from app.ingestion.manager import IngestionManager
 from app.ingestion.j7 import J7Ingestion
+from app.ingestion.launches import LaunchIngestion
 from app.intelligence.pipeline import IntelligencePipeline
 from app.execution.engine import ExecutionEngine
 from app.paper_trading.engine import PaperTradingEngine
@@ -44,6 +45,7 @@ execution_engine: ExecutionEngine | None = None
 paper_trading_engine: PaperTradingEngine | None = None
 signal_engine: SignalEngine | None = None
 j7_ingestion: J7Ingestion | None = None
+launch_ingestion: LaunchIngestion | None = None
 
 
 async def _broadcast_event(event: dict):
@@ -52,7 +54,7 @@ async def _broadcast_event(event: dict):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global ingestion_manager, intelligence_pipeline, execution_engine, paper_trading_engine, signal_engine, j7_ingestion
+    global ingestion_manager, intelligence_pipeline, execution_engine, paper_trading_engine, signal_engine, j7_ingestion, launch_ingestion, launch_ingestion, launch_ingestion
 
     logger.info("Starting Narrative Sniper backend")
 
@@ -83,6 +85,25 @@ async def lifespan(app: FastAPI):
     j7_ingestion = J7Ingestion(intelligence_pipeline)
     await j7_ingestion.start()
 
+    # New-launch ingestion: fresh tokens from RugCheck + DexScreener feed the
+    # pipeline with exact mints so the signal engine never guesses by symbol.
+    launch_ingestion = LaunchIngestion(intelligence_pipeline)
+    await launch_ingestion.start()
+
+    # New-launch ingestion: fresh tokens from RugCheck + DexScreener feed the
+    # pipeline with exact mints so the signal engine never guesses by symbol.
+    launch_ingestion = LaunchIngestion(intelligence_pipeline)
+    await launch_ingestion.start()
+
+    # New-launch ingestion: fresh tokens from RugCheck + DexScreener feed the
+    # pipeline with exact mints so the signal engine never guesses by symbol.
+    launch_ingestion = LaunchIngestion(intelligence_pipeline)
+    await launch_ingestion.start()
+
+
+
+
+
     logger.info("All components initialized")
 
     yield
@@ -91,6 +112,9 @@ async def lifespan(app: FastAPI):
 
     if j7_ingestion:
         await j7_ingestion.stop()
+
+    if launch_ingestion:
+        await launch_ingestion.stop()
 
     if signal_engine:
         await signal_engine.stop()
@@ -175,3 +199,9 @@ def get_j7_ingestion() -> J7Ingestion:
     if j7_ingestion is None:
         raise RuntimeError("J7 ingestion not initialized")
     return j7_ingestion
+
+
+def get_launch_ingestion() -> LaunchIngestion:
+    if launch_ingestion is None:
+        raise RuntimeError("Launch ingestion not initialized")
+    return launch_ingestion

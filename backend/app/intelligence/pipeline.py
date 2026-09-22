@@ -9,8 +9,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 import structlog
 
 from app.core.config import settings
-from app.models.narrative import Narrative, NarrativeCluster, SourceRef
-from app.models.token import Token
+from app.models import Narrative, NarrativeCluster, SourceRef
 
 
 logger = structlog.get_logger()
@@ -127,6 +126,17 @@ class IntelligencePipeline:
 
         # Create or update narrative
         narrative_id = str(uuid.uuid4())
+        # Consensus exact mint: if most items in the cluster carry the same
+        # token_mint (e.g. from launch ingestion), keep it so the signal
+        # engine never has to guess which token a symbol means.
+        mint_votes: dict[str, int] = {}
+        for item, _ in cluster_items:
+            m = item.get("token_mint")
+            if m:
+                mint_votes[m] = mint_votes.get(m, 0) + 1
+        consensus_mint = max(mint_votes, key=mint_votes.get) if mint_votes else None
+        if consensus_mint and mint_votes[consensus_mint] < len(cluster_items) / 2:
+            consensus_mint = None  # no clear majority, don't guess
         narrative = Narrative(
             id=narrative_id,
             label=label,
@@ -135,6 +145,7 @@ class IntelligencePipeline:
             cluster_size=len(cluster_items),
             top_tokens=top_tokens[:10],
             sources=sources,
+            token_mint=consensus_mint,
             created_at=datetime.utcnow(),
             updated_at=datetime.utcnow(),
         )
@@ -227,7 +238,7 @@ class IntelligencePipeline:
         return label, description, confidence
 
     def _label_cluster_heuristic(self, texts: list[str], tokens: list[str]) -> tuple[str, str, float]:
-        
+        combined = " ".join(texts[:10])
         # Extract key phrases using TF-IDF
         try:
             tfidf = self.vectorizer.fit_transform([combined])

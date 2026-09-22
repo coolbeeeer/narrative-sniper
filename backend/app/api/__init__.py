@@ -9,6 +9,7 @@ from app.main import (
     get_intelligence_pipeline,
     get_execution_engine,
     get_paper_trading_engine,
+    get_launch_ingestion,
 )
 from app.ingestion.manager import IngestionManager
 from app.intelligence.pipeline import IntelligencePipeline
@@ -67,6 +68,14 @@ class LiveStatusResponse(BaseModel):
     paper_trading: bool
 
 
+class LaunchStatusResponse(BaseModel):
+    enabled: bool
+    running: bool
+    last_poll: Optional[str] = None
+    launches_seen: int
+    launches_emitted: int
+
+
 class ConfigResponse(BaseModel):
     paper_trading: bool
     max_position_size_usd: float
@@ -74,6 +83,15 @@ class ConfigResponse(BaseModel):
     slippage_bps: int
     priority_fee_lamports: int
     narrative_confidence_threshold: float
+    # Signal engine (narrative -> trade decisions)
+    signal_enabled: bool
+    signal_confidence_threshold: float
+    signal_min_cluster_size: int
+    signal_position_size_usd: float
+    signal_max_open_positions: int
+    signal_cooldown_hours: int
+    signal_take_profit_pct: float
+    signal_stop_loss_pct: float
 
 
 class ConfigUpdate(BaseModel):
@@ -83,6 +101,15 @@ class ConfigUpdate(BaseModel):
     slippage_bps: Optional[int] = None
     priority_fee_lamports: Optional[int] = None
     narrative_confidence_threshold: Optional[float] = None
+    # Signal engine (narrative -> trade decisions)
+    signal_enabled: Optional[bool] = None
+    signal_confidence_threshold: Optional[float] = None
+    signal_min_cluster_size: Optional[int] = None
+    signal_position_size_usd: Optional[float] = None
+    signal_max_open_positions: Optional[int] = None
+    signal_cooldown_hours: Optional[int] = None
+    signal_take_profit_pct: Optional[float] = None
+    signal_stop_loss_pct: Optional[float] = None
 
 
 @router.get("/narratives", response_model=list[NarrativeResponse])
@@ -155,6 +182,21 @@ async def get_live_status(
     )
 
 
+@router.get("/launches/status", response_model=LaunchStatusResponse)
+async def get_launches_status():
+    try:
+        st = get_launch_ingestion().get_status()
+        return LaunchStatusResponse(
+            enabled=st["enabled"],
+            running=st["running"],
+            last_poll=st.get("last_poll"),
+            launches_seen=st["tracked_mints"],
+            launches_emitted=st["received_count"],
+        )
+    except RuntimeError:
+        return LaunchStatusResponse(enabled=False, running=False, launches_seen=0, launches_emitted=0)
+
+
 @router.get("/config", response_model=ConfigResponse)
 async def get_config():
     return ConfigResponse(
@@ -164,6 +206,14 @@ async def get_config():
         slippage_bps=settings.SLIPPAGE_BPS,
         priority_fee_lamports=settings.PRIORITY_FEE_LAMPORTS,
         narrative_confidence_threshold=settings.NARRATIVE_CONFIDENCE_THRESHOLD,
+        signal_enabled=settings.SIGNAL_ENABLED,
+        signal_confidence_threshold=settings.SIGNAL_CONFIDENCE_THRESHOLD,
+        signal_min_cluster_size=settings.SIGNAL_MIN_CLUSTER_SIZE,
+        signal_position_size_usd=settings.SIGNAL_POSITION_SIZE_USD,
+        signal_max_open_positions=settings.SIGNAL_MAX_OPEN_POSITIONS,
+        signal_cooldown_hours=settings.SIGNAL_COOLDOWN_HOURS,
+        signal_take_profit_pct=settings.SIGNAL_TAKE_PROFIT_PCT,
+        signal_stop_loss_pct=settings.SIGNAL_STOP_LOSS_PCT,
     )
 
 
@@ -185,6 +235,26 @@ async def update_config(
         settings.PRIORITY_FEE_LAMPORTS = config.priority_fee_lamports
     if config.narrative_confidence_threshold is not None:
         settings.NARRATIVE_CONFIDENCE_THRESHOLD = config.narrative_confidence_threshold
+    # Signal engine settings apply immediately: the signal engine reads
+    # settings.SIGNAL_* live on every narrative evaluation (no restart needed).
+    if config.signal_enabled is not None:
+        settings.SIGNAL_ENABLED = config.signal_enabled
+    if config.signal_confidence_threshold is not None:
+        settings.SIGNAL_CONFIDENCE_THRESHOLD = config.signal_confidence_threshold
+    if config.signal_min_cluster_size is not None:
+        settings.SIGNAL_MIN_CLUSTER_SIZE = config.signal_min_cluster_size
+    if config.signal_position_size_usd is not None:
+        if config.signal_position_size_usd <= 0:
+            raise HTTPException(status_code=422, detail="signal_position_size_usd must be positive")
+        settings.SIGNAL_POSITION_SIZE_USD = config.signal_position_size_usd
+    if config.signal_max_open_positions is not None:
+        settings.SIGNAL_MAX_OPEN_POSITIONS = config.signal_max_open_positions
+    if config.signal_cooldown_hours is not None:
+        settings.SIGNAL_COOLDOWN_HOURS = config.signal_cooldown_hours
+    if config.signal_take_profit_pct is not None:
+        settings.SIGNAL_TAKE_PROFIT_PCT = config.signal_take_profit_pct
+    if config.signal_stop_loss_pct is not None:
+        settings.SIGNAL_STOP_LOSS_PCT = config.signal_stop_loss_pct
 
     await ingestion.reload_config()
 
@@ -195,6 +265,14 @@ async def update_config(
         slippage_bps=settings.SLIPPAGE_BPS,
         priority_fee_lamports=settings.PRIORITY_FEE_LAMPORTS,
         narrative_confidence_threshold=settings.NARRATIVE_CONFIDENCE_THRESHOLD,
+        signal_enabled=settings.SIGNAL_ENABLED,
+        signal_confidence_threshold=settings.SIGNAL_CONFIDENCE_THRESHOLD,
+        signal_min_cluster_size=settings.SIGNAL_MIN_CLUSTER_SIZE,
+        signal_position_size_usd=settings.SIGNAL_POSITION_SIZE_USD,
+        signal_max_open_positions=settings.SIGNAL_MAX_OPEN_POSITIONS,
+        signal_cooldown_hours=settings.SIGNAL_COOLDOWN_HOURS,
+        signal_take_profit_pct=settings.SIGNAL_TAKE_PROFIT_PCT,
+        signal_stop_loss_pct=settings.SIGNAL_STOP_LOSS_PCT,
     )
 
 

@@ -64,3 +64,20 @@ export interface PaginatedResponse<T> {
   page: number;
   pageSize: number;
 }
+
+export interface AppConfig {
+  paper_trading: boolean;
+  max_position_size_usd: number;
+  max_daily_loss_usd: number;
+  slippage_bps: number;
+  priority_fee_lamports: number;
+  narrative_confidence_threshold: number;
+  signal_enabled: boolean;
+  signal_confidence_threshold: number;
+  signal_min_cluster_size: number;
+  signal_position_size_usd: number;
+  signal_max_open_positions: number;
+  signal_cooldown_hours: number;
+  signal_take_profit_pct: number;
+  signal_stop_loss_pct: number;
+}

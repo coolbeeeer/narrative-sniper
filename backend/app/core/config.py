@@ -95,6 +95,17 @@ class Settings(BaseSettings):
     SIGNAL_TAKE_PROFIT_PCT: float = 30.0
     SIGNAL_STOP_LOSS_PCT: float = 15.0
 
+    # Token launch discovery (RugCheck + DexScreener new launches)
+    LAUNCHES_ENABLED: bool = True
+    LAUNCHES_POLL_SECONDS: int = 60
+    LAUNCHES_MAX_PER_POLL: int = 50
+
+    # Token safety gate (pre-trade rug checks, ported from RugRadar)
+    SAFETY_ENABLED: bool = True
+    SAFETY_MAX_RISK_SCORE: int = 60          # AVOID / scores above this are blocked
+    SAFETY_MIN_LIQUIDITY_USD: float = 20000.0
+    SAFETY_MIN_VOLUME_H24_USD: float = 10000.0
+
     # Monitoring
     PROMETHEUS_PORT: int = 9090
     LOG_LEVEL: str = "INFO"

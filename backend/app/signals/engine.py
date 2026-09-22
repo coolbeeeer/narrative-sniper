@@ -17,6 +17,7 @@ import structlog
 from app.core.config import settings
 from app.models import Narrative
 from app.paper_trading.engine import PaperTradingEngine
+from app.safety.checker import safety_gate
 from app.signals.prices import PriceLookup
 
 
@@ -94,9 +95,46 @@ class SignalEngine:
             return
 
         # resolve price (free DexScreener lookup)
-        quote = await self.prices.resolve_symbol(symbol)
-        if not quote or not quote.get("address"):
-            logger.info("Signal rejected: no Solana price found", symbol=symbol)
+        # Prefer the exact mint propagated from ingestion over symbol guessing:
+        # a funded impostor can share a symbol, but never the mint.
+        quote: Optional[dict] = None
+        if getattr(narrative, "token_mint", None):
+            price = await self.prices.price_by_address(narrative.token_mint)
+            if price:
+                quote = {
+                    "address": narrative.token_mint,
+                    "symbol": symbol,
+                    "name": narrative.label,
+                    "price_usd": price,
+                }
+            else:
+                logger.info("Signal rejected: no price for narrative mint", mint=narrative.token_mint)
+                return
+        else:
+            quote = await self.prices.resolve_symbol(symbol)
+            if not quote or not quote.get("address"):
+                logger.info("Signal rejected: no Solana price found", symbol=symbol)
+                return
+
+        # safety gate: rug checks before any paper position opens
+        allowed, report = await safety_gate(quote["address"])
+        if not allowed:
+            logger.info(
+                "Signal rejected by safety gate",
+                symbol=symbol,
+                mint=quote["address"],
+                score=report.get("score"),
+                verdict=report.get("verdict"),
+            )
+            await self._emit({
+                "type": "trade_rejected_safety",
+                "symbol": symbol,
+                "narrative": narrative.label,
+                "mint": quote["address"],
+                "score": report.get("score"),
+                "verdict": report.get("verdict"),
+                "bottom_line": report.get("bottom_line"),
+            })
             return
 
         price = quote["price_usd"]

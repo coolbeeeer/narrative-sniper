@@ -6,6 +6,7 @@ import { NarrativeTable } from '@/components/tables/NarrativeTable';
 import { PositionTable } from '@/components/tables/PositionTable';
 import { PnLChart } from '@/components/charts/PnLChart';
 import { LiveStatusCard } from '@/components/layout/LiveStatusCard';
+import { SniperSettingsCard } from '@/components/layout/SniperSettingsCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -78,6 +79,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           <div className="lg:col-span-1 space-y-6">
             <LiveStatusCard status={liveStatus} isLoading={isLoading} />
+            <SniperSettingsCard />
             <Card variant="bordered">
               <CardHeader>
                 <CardTitle className="text-lg">Portfolio Summary</CardTitle>
