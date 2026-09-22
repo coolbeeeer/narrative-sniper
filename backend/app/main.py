@@ -6,9 +6,11 @@ import structlog
 from app.core.config import settings
 from app.api import router as api_router
 from app.ingestion.manager import IngestionManager
+from app.ingestion.j7 import J7Ingestion
 from app.intelligence.pipeline import IntelligencePipeline
 from app.execution.engine import ExecutionEngine
 from app.paper_trading.engine import PaperTradingEngine
+from app.signals.engine import SignalEngine
 
 
 logger = structlog.get_logger()
@@ -40,11 +42,17 @@ ingestion_manager: IngestionManager | None = None
 intelligence_pipeline: IntelligencePipeline | None = None
 execution_engine: ExecutionEngine | None = None
 paper_trading_engine: PaperTradingEngine | None = None
+signal_engine: SignalEngine | None = None
+j7_ingestion: J7Ingestion | None = None
+
+
+async def _broadcast_event(event: dict):
+    await manager.broadcast({"channel": "signals", "event": event})
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global ingestion_manager, intelligence_pipeline, execution_engine, paper_trading_engine
+    global ingestion_manager, intelligence_pipeline, execution_engine, paper_trading_engine, signal_engine, j7_ingestion
 
     logger.info("Starting Narrative Sniper backend")
 
@@ -57,6 +65,12 @@ async def lifespan(app: FastAPI):
 
     paper_trading_engine = PaperTradingEngine()
     await paper_trading_engine.initialize()
+    paper_trading_engine.set_execution_engine(execution_engine)
+
+    # Signal engine: narrative -> trade decisions (paper)
+    signal_engine = SignalEngine(paper_trading_engine, on_event=_broadcast_event)
+    intelligence_pipeline.on_narrative(signal_engine.evaluate)
+    await signal_engine.start()
 
     ingestion_manager = IngestionManager(
         intelligence_pipeline=intelligence_pipeline,
@@ -65,11 +79,21 @@ async def lifespan(app: FastAPI):
     )
     await ingestion_manager.start()
 
+    # J7 X stream ingestion
+    j7_ingestion = J7Ingestion(intelligence_pipeline)
+    await j7_ingestion.start()
+
     logger.info("All components initialized")
 
     yield
 
     logger.info("Shutting down Narrative Sniper backend")
+
+    if j7_ingestion:
+        await j7_ingestion.stop()
+
+    if signal_engine:
+        await signal_engine.stop()
 
     if ingestion_manager:
         await ingestion_manager.stop()
@@ -139,3 +163,15 @@ def get_paper_trading_engine() -> PaperTradingEngine:
     if paper_trading_engine is None:
         raise RuntimeError("Paper trading engine not initialized")
     return paper_trading_engine
+
+
+def get_signal_engine() -> SignalEngine:
+    if signal_engine is None:
+        raise RuntimeError("Signal engine not initialized")
+    return signal_engine
+
+
+def get_j7_ingestion() -> J7Ingestion:
+    if j7_ingestion is None:
+        raise RuntimeError("J7 ingestion not initialized")
+    return j7_ingestion

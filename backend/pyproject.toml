@@ -26,6 +26,7 @@ dependencies = [
     "tweepy>=4.14.0",
     "telethon>=1.32.0",
     "discord.py>=2.3.0",
+    "python-socketio[asyncio_client]>=5.11.0",
     "solana>=0.34.0",
     "solders>=0.19.0",
     "base58>=2.1.0",

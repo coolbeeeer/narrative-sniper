@@ -4,7 +4,7 @@ from typing import Optional
 from decimal import Decimal
 
 from app.core.config import settings
-from app.models.token import Token
+from app.models import Token
 
 
 logger = structlog.get_logger()

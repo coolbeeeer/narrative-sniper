@@ -39,6 +39,10 @@ class Settings(BaseSettings):
 
     DISCORD_BOT_TOKEN: Optional[str] = None
 
+    # J7Tracker X stream (unofficial socket.io feed, JWT session token)
+    J7_ENABLED: bool = True
+    J7_SESSION_TOKEN: Optional[str] = None
+
     HELIUS_API_KEY: Optional[str] = None
     HELIUS_WS_URL: str = "wss://mainnet.helius-rpc.com"
 
@@ -50,6 +54,11 @@ class Settings(BaseSettings):
 
     OPENAI_API_KEY: Optional[str] = None
     ANTHROPIC_API_KEY: Optional[str] = None
+
+    # NVIDIA NIM (OpenAI-compatible, free tier)
+    NVIDIA_API_KEY: Optional[str] = None
+    NVIDIA_API_BASE: str = "https://integrate.api.nvidia.com/v1"
+    NVIDIA_MODEL: str = "nvidia/nemotron-3.5-lightning-30b-a3b"
 
     # Auth
     SECRET_KEY: str = "dev-secret-change-in-production"
@@ -75,6 +84,16 @@ class Settings(BaseSettings):
     MAX_DAILY_LOSS_USD: float = 500.0
     SLIPPAGE_BPS: int = 100
     PRIORITY_FEE_LAMPORTS: int = 10000
+
+    # Signal engine (narrative -> trade decisions)
+    SIGNAL_ENABLED: bool = True
+    SIGNAL_CONFIDENCE_THRESHOLD: float = 0.7
+    SIGNAL_MIN_CLUSTER_SIZE: int = 10
+    SIGNAL_POSITION_SIZE_USD: float = 100.0
+    SIGNAL_MAX_OPEN_POSITIONS: int = 5
+    SIGNAL_COOLDOWN_HOURS: int = 24
+    SIGNAL_TAKE_PROFIT_PCT: float = 30.0
+    SIGNAL_STOP_LOSS_PCT: float = 15.0
 
     # Monitoring
     PROMETHEUS_PORT: int = 9090

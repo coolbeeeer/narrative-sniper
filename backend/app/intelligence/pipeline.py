@@ -27,6 +27,11 @@ class IntelligencePipeline:
         self.pending_items: list[dict] = []
         self.processing = False
         self.process_task: Optional[asyncio.Task] = None
+        self.narrative_listeners: list = []  # async callbacks fired per new narrative
+
+    def on_narrative(self, callback):
+        """Register an async callback invoked with each new Narrative."""
+        self.narrative_listeners.append(callback)
 
     async def initialize(self):
         logger.info("Initializing intelligence pipeline")
@@ -146,6 +151,12 @@ class IntelligencePipeline:
         
         logger.info("New narrative detected", label=label, confidence=confidence, size=len(cluster_items))
 
+        for listener in self.narrative_listeners:
+            try:
+                await listener(narrative)
+            except Exception as e:
+                logger.warning("Narrative listener failed", error=str(e))
+
     def _extract_source_ref(self, item: dict) -> SourceRef:
         return SourceRef(
             platform=item.get("platform", "unknown"),
@@ -166,8 +177,56 @@ class IntelligencePipeline:
         return list(tokens)[:20]
 
     async def _label_cluster(self, texts: list[str], tokens: list[str]) -> tuple[str, str, float]:
-        # For now, use a simple heuristic - in production, call LLM
-        combined = " ".join(texts[:10])
+        # Prefer NVIDIA NIM (free tier) for labeling; fall back to heuristic
+        if settings.NVIDIA_API_KEY:
+            try:
+                return await self._label_cluster_llm(texts, tokens)
+            except Exception as e:
+                logger.warning("NVIDIA NIM labeling failed, using heuristic", error=str(e))
+
+        return self._label_cluster_heuristic(texts, tokens)
+
+    async def _label_cluster_llm(self, texts: list[str], tokens: list[str]) -> tuple[str, str, float]:
+        from openai import AsyncOpenAI
+
+        client = AsyncOpenAI(
+            base_url=settings.NVIDIA_API_BASE,
+            api_key=settings.NVIDIA_API_KEY,
+        )
+
+        sample = "\n".join(f"- {t[:280]}" for t in texts[:15])
+        token_hint = f"Tokens mentioned: {', '.join(tokens[:8])}." if tokens else "No token symbols detected."
+
+        prompt = (
+            "You are a crypto market analyst. Below are social media posts that clustered together "
+            "as one emerging narrative. Summarize the narrative in a short label.\n\n"
+            f"{sample}\n\n{token_hint}\n\n"
+            'Respond with ONLY valid JSON: {"label": "<=6 word narrative label>", '
+            '"description": "<=25 word explanation>", "confidence": <0.0-1.0>}'
+        )
+
+        resp = await client.chat.completions.create(
+            model=settings.NVIDIA_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.2,
+            max_tokens=200,
+            response_format={"type": "json_object"},
+        )
+
+        import json
+        data = json.loads(resp.choices[0].message.content or "{}")
+        label = str(data.get("label", "Emerging Narrative"))[:80]
+        description = str(data.get("description", ""))[:300]
+        try:
+            confidence = float(data.get("confidence", 0.6))
+        except (TypeError, ValueError):
+            confidence = 0.6
+        confidence = max(0.0, min(1.0, confidence))
+
+        logger.info("Narrative labeled via NVIDIA NIM", label=label, confidence=confidence)
+        return label, description, confidence
+
+    def _label_cluster_heuristic(self, texts: list[str], tokens: list[str]) -> tuple[str, str, float]:
         
         # Extract key phrases using TF-IDF
         try:
