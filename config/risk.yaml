@@ -1,0 +1,42 @@
+risk:
+  max_daily_loss_sol: 2.0
+  max_daily_loss_percentage: 0.1
+  max_drawdown_percentage: 0.2
+  max_position_percentage: 0.2
+  correlation_limit: 0.7
+  cooldown_after_loss_minutes: 30
+  emergency_stop_enabled: true
+  max_concurrent_snipes: 3
+
+  position_limits:
+    max_position_size_sol: 1.0
+    max_positions: 5
+    min_liquidity_sol: 10.0
+    max_buy_tax_percentage: 10
+    max_sell_tax_percentage: 10
+
+  narrative_filters:
+    min_narrative_score: 0.7
+    min_dev_score: 0.5
+    min_contract_score: 0.3
+
+  take_profit:
+    multipliers: [2.0, 3.0, 5.0, 10.0]
+    percentages: [0.25, 0.25, 0.25, 0.25]
+
+  stop_loss:
+    percentage: 0.5
+    trailing_percentage: 0.3
+    max_hold_time_hours: 24
+
+  priority_fee:
+    multiplier: 1.5
+    min_lamports: 10000
+    max_lamports: 1000000
+
+  paper_trading:
+    enabled: true
+    starting_balance_sol: 10.0
+    starting_balance_usdc: 1000.0
+    fee_bps: 25
+    slippage_bps: 50
