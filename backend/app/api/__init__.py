@@ -21,6 +21,14 @@ from app.core.config import settings
 router = APIRouter()
 
 
+class SourceRefResponse(BaseModel):
+    platform: str
+    handle: str
+    url: str
+    timestamp: str
+    engagement: int = 0
+
+
 class NarrativeResponse(BaseModel):
     id: str
     label: str
@@ -28,7 +36,7 @@ class NarrativeResponse(BaseModel):
     confidence: float
     cluster_size: int
     top_tokens: list[str]
-    sources: list[dict]
+    sources: list[SourceRefResponse]
     created_at: datetime
     updated_at: datetime
 
