@@ -24,11 +24,11 @@ export function PnLChart({ data, isLoading }: PnLChartProps) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>PnL History</CardTitle>
+          <CardTitle>How the money is doing</CardTitle>
         </CardHeader>
         <CardContent className="h-64 flex items-center justify-center">
           <div className="text-muted-foreground">
-            {isLoading ? 'Loading PnL data...' : 'No PnL data available'}
+            {isLoading ? 'Loading…' : 'Nothing to show yet — this line starts moving after the first trade.'}
           </div>
         </CardContent>
       </Card>
@@ -57,7 +57,7 @@ export function PnLChart({ data, isLoading }: PnLChartProps) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Portfolio Value</CardTitle>
+        <CardTitle>Total worth right now</CardTitle>
         <div className={cn('font-mono text-sm font-medium', totalChange >= 0 ? 'text-green-600' : 'text-red-600')}>
           {formatValue(latest.totalValue)}
           <span className="ml-2 text-xs">
@@ -83,6 +83,7 @@ export function PnLChart({ data, isLoading }: PnLChartProps) {
                 axisLine={false}
                 tickLine={false}
                 width={60}
+                domain={['auto', 'auto']}
               />
               <Tooltip
                 contentStyle={{
@@ -92,7 +93,7 @@ export function PnLChart({ data, isLoading }: PnLChartProps) {
                   boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
                 }}
                 labelFormatter={formatTime}
-                formatter={(value: number) => [formatValue(value), 'Portfolio Value']}
+                formatter={(value: number) => [formatValue(value), 'Total worth']}
               />
               <defs>
                 <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
@@ -127,19 +128,19 @@ export function PnLChart({ data, isLoading }: PnLChartProps) {
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
             <span className="flex items-center gap-1.5">
               <span className="w-3 h-3 rounded-full bg-copper-500" />
-              Total Value
+              Total worth
             </span>
             <span className="flex items-center gap-1.5">
               <span className="w-3 h-3 rounded-full bg-copper-500" style={{ opacity: 0.5 }} />
-              Unrealized PnL
+              Profit on open trades
             </span>
           </div>
           <div className="flex items-center gap-4 text-sm">
             <span className="text-green-600 font-mono">
-              Realized: {latest.realizedPnl >= 0 ? '+' : ''}{formatValue(latest.realizedPnl)}
+              Banked profit: {latest.realizedPnl >= 0 ? '+' : ''}{formatValue(latest.realizedPnl)}
             </span>
             <span className={cn('font-mono', latest.unrealizedPnl >= 0 ? 'text-green-600' : 'text-red-600')}>
-              Unrealized: {latest.unrealizedPnl >= 0 ? '+' : ''}{formatValue(latest.unrealizedPnl)}
+              Open profit: {latest.unrealizedPnl >= 0 ? '+' : ''}{formatValue(latest.unrealizedPnl)}
             </span>
           </div>
         </div>

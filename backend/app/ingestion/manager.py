@@ -156,6 +156,7 @@ class IngestionManager:
         self.ingestion_task: Optional[asyncio.Task] = None
         self.total_fetched = 0
         self.fetch_times: list[float] = []
+        self.fetch_events: list = []  # (timestamp, item count) per successful fetch
         self.queue: asyncio.Queue = asyncio.Queue(maxsize=10000)
 
     async def start(self):
@@ -233,6 +234,10 @@ class IngestionManager:
             self.fetch_times.append((datetime.utcnow() - start).total_seconds())
             if len(self.fetch_times) > 100:
                 self.fetch_times = self.fetch_times[-100:]
+            # Track real throughput for an honest items/minute rate
+            self.fetch_events.append((datetime.utcnow(), len(items)))
+            if len(self.fetch_events) > 1000:
+                self.fetch_events = self.fetch_events[-1000:]
             return items
         except Exception as e:
             raise e
@@ -254,10 +259,16 @@ class IngestionManager:
         return any(s.is_healthy for s in self.sources.values() if s.enabled)
 
     def get_ingestion_rate(self) -> float:
-        if not self.fetch_times:
-            return 0.0
-        avg_time = sum(self.fetch_times) / len(self.fetch_times)
-        return 60.0 / avg_time if avg_time > 0 else 0.0
+        """Items actually fetched in the trailing 60 seconds (per minute).
+
+        The old formula (60 / average fetch duration) exploded into millions
+        whenever a source answered instantly from cache, which made the
+        dashboard show nonsense like 2,741,116/min.
+        """
+        now = datetime.utcnow()
+        cutoff = now.timestamp() - 60
+        self.fetch_events = [e for e in self.fetch_events if e[0].timestamp() >= cutoff]
+        return float(sum(count for _, count in self.fetch_events))
 
     def get_queue_depth(self) -> int:
         return self.queue.qsize()

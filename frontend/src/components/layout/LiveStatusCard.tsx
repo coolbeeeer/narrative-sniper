@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 import { LiveStatus } from '@/types';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
-import { formatNumber } from '@/lib/utils';
+import { formatShortNumber } from '@/lib/utils';
 
 interface LiveStatusProps {
   status: LiveStatus | null;
@@ -12,10 +12,10 @@ interface LiveStatusProps {
 }
 
 const statusItems = [
-  { key: 'ingestionRate', label: 'Ingestion Rate', format: (v: number) => `${formatNumber(v)}/min` },
-  { key: 'queueDepth', label: 'Queue Depth', format: (v: number) => formatNumber(v) },
-  { key: 'activeNarratives', label: 'Active Narratives', format: (v: number) => formatNumber(v) },
-  { key: 'openPositions', label: 'Open Positions', format: (v: number) => formatNumber(v) },
+  { key: 'ingestionRate', label: 'Posts seen per min', format: (v: number) => formatShortNumber(v) },
+  { key: 'queueDepth', label: 'Waiting to be checked', format: (v: number) => formatShortNumber(v) },
+  { key: 'activeNarratives', label: 'Stories found', format: (v: number) => formatShortNumber(v) },
+  { key: 'openPositions', label: 'Trades open now', format: (v: number) => formatShortNumber(v) },
 ] as const;
 
 export function LiveStatusCard({ status, isLoading }: LiveStatusProps) {
@@ -50,7 +50,7 @@ export function LiveStatusCard({ status, isLoading }: LiveStatusProps) {
                 status.isConnected ? 'bg-green-500' : 'bg-red-500'
               )}
             />
-            {status.isConnected ? 'Connected' : 'Disconnected'}
+            {status.isConnected ? 'Working' : 'Not connected'}
           </Badge>
         </div>
         <div className="grid grid-cols-2 gap-3">
@@ -59,16 +59,16 @@ export function LiveStatusCard({ status, isLoading }: LiveStatusProps) {
               <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
                 {item.label}
               </div>
-              <div className="font-mono text-lg font-medium text-foreground">
+              <div className="font-mono text-lg font-medium text-foreground truncate" title={String(status[item.key as keyof LiveStatus])}>
                 {item.format(status[item.key as keyof LiveStatus] as number)}
               </div>
             </div>
           ))}
         </div>
         <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
-          <span>Last update: {new Date(status.lastUpdate).toLocaleTimeString()}</span>
+          <span>Last checked: {new Date(status.lastUpdate).toLocaleTimeString()}</span>
           <Badge variant="outline" size="sm">
-            {status.paperTrading ? 'Paper Trading' : 'Live Trading'}
+            {status.paperTrading ? 'Practice money' : 'Real money'}
           </Badge>
         </div>
       </CardContent>

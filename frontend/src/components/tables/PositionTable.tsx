@@ -31,8 +31,8 @@ export function PositionTable({ positions, selectedId, onSelect, isLoading }: Po
     return (
       <Card>
         <CardContent className="p-8 text-center">
-          <p className="text-muted-foreground">No open positions</p>
-          <p className="text-sm text-muted-foreground/70 mt-1">Positions will appear here when narratives are traded</p>
+          <p className="text-muted-foreground">No trades yet</p>
+          <p className="text-sm text-muted-foreground/70 mt-1">A trade appears here when a story is strong enough and its coin passes the safety check (real trading activity, not a scam).</p>
         </CardContent>
       </Card>
     );
@@ -48,15 +48,15 @@ export function PositionTable({ positions, selectedId, onSelect, isLoading }: Po
           <table className="w-full" role="table">
             <thead>
               <tr className="border-b border-border bg-slate-50 dark:bg-slate-900/50">
-                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Token</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Narrative</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">Entry</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">Current</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">Amount</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">Value</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">PnL</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Coin</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Story</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">Bought at</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">Price now</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">Coins held</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">Worth now</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">Profit / loss</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Entry Time</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Bought</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -105,7 +105,7 @@ export function PositionTable({ positions, selectedId, onSelect, isLoading }: Po
                       variant={position.status === 'open' ? 'success' : position.status === 'partial' ? 'warning' : 'default'}
                       size="sm"
                     >
-                      {position.status}
+                      {position.status === 'open' ? 'Open' : position.status === 'partial' ? 'Partly sold' : 'Sold'}
                     </Badge>
                   </td>
                   <td className="px-4 py-3 text-sm text-muted-foreground">

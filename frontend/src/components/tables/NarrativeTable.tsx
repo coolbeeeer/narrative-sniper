@@ -31,8 +31,8 @@ export function NarrativeTable({ narratives, selectedId, onSelect, isLoading }: 
     return (
       <Card>
         <CardContent className="p-8 text-center">
-          <p className="text-muted-foreground">No narratives detected yet</p>
-          <p className="text-sm text-muted-foreground/70 mt-1">Start ingestion to discover emerging narratives</p>
+          <p className="text-muted-foreground">No stories found yet</p>
+          <p className="text-sm text-muted-foreground/70 mt-1">The sniper is listening. A story appears here when a crowd starts talking about the same coin at the same time.</p>
         </CardContent>
       </Card>
     );
@@ -45,12 +45,12 @@ export function NarrativeTable({ narratives, selectedId, onSelect, isLoading }: 
           <table className="w-full" role="table">
             <thead>
               <tr className="border-b border-border bg-slate-50 dark:bg-slate-900/50">
-                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Narrative</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Confidence</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Cluster Size</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Top Tokens</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Sources</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Updated</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Story</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">How sure</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">People talking</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Coins mentioned</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Posts seen</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Last seen</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -72,7 +72,10 @@ export function NarrativeTable({ narratives, selectedId, onSelect, isLoading }: 
                 >
                   <td className="px-4 py-3">
                     <div className="font-medium text-foreground">{narrative.label}</div>
-                    <div className="text-sm text-muted-foreground truncate max-w-xs">{narrative.description}</div>
+                    <div className="text-sm text-muted-foreground truncate max-w-xs">
+                      {narrative.clusterSize} posts
+                      {topTokens.length > 0 ? ` talking about ${topTokens.slice(0, 3).join(', ')}` : ' in this story'}
+                    </div>
                   </td>
                   <td className="px-4 py-3">
                     <Badge
@@ -100,7 +103,7 @@ export function NarrativeTable({ narratives, selectedId, onSelect, isLoading }: 
                     </div>
                   </td>
                   <td className="px-4 py-3 text-sm text-muted-foreground">
-                    {sources.length} sources
+                    {sources.length} posts
                   </td>
                   <td className="px-4 py-3 text-sm text-muted-foreground">
                     {formatTimestamp(narrative.updatedAt)}
