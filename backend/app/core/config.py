@@ -105,7 +105,7 @@ class Settings(BaseSettings):
     VOLUME_POLL_SECONDS: int = 60
     VOLUME_WATCH_LIMIT: int = 40          # newest tracked tokens checked per poll
     VOLUME_MIN_BUYS_H1: int = 150         # buys in the last hour
-    VOLUME_MIN_VOLUME_H1_USD: float = 25000.0
+    VOLUME_MIN_VOLUME_H1_USD: float = 10000.0
     VOLUME_SPIKE_MULTIPLE: float = 3.0    # h1 volume vs the previous reading
     VOLUME_COOLDOWN_HOURS: int = 6        # per-token silence after an alert
 
