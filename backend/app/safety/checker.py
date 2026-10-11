@@ -21,7 +21,14 @@ logger = structlog.get_logger()
 DEXSCREENER_URL = "https://api.dexscreener.com/tokens/v1/solana/{}"
 RUGCHECK_REPORT_URL = "https://api.rugcheck.xyz/v1/tokens/{}/report"
 RUGCHECK_NEW_TOKENS_URL = "https://api.rugcheck.xyz/v1/stats/new_tokens"
-PUMPFUN_COIN_URL = "https://frontend-api-v3.pump.fun/coins/{}"
+# pump.fun's single-coin route (/coins/{mint}) 404s even for coins it
+# lists itself — the mayhem flag is read from the newest-coins list.
+PUMPFUN_COINS_URL = (
+    "https://frontend-api-v3.pump.fun/coins?offset={}&limit=50"
+    "&sort=created_timestamp&order=DESC&includeNsfw=true"
+)
+MAYHEM_LIST_PAGES = 4          # 200 newest coins per refresh
+MAYHEM_CACHE_TTL_SECONDS = 45  # shared by ingestion polls and the gate
 
 LEGACY_TOKEN_PROGRAM = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
 
@@ -73,31 +80,58 @@ async def _get_json(client: httpx.AsyncClient, url: str, timeout: float = 20.0) 
         return None
 
 
+_mayhem_map: dict[str, str] = {}
+_mayhem_map_at: float = 0.0
+
+
+async def _fetch_mayhem_map(client: httpx.AsyncClient) -> dict[str, str]:
+    """mint -> mayhem_state for the newest pump.fun coins that carry a
+    Mayhem flag. Normal coins are simply absent from the map."""
+    out: dict[str, str] = {}
+    for page in range(MAYHEM_LIST_PAGES):
+        data = await _get_json(client, PUMPFUN_COINS_URL.format(page * 50))
+        if not isinstance(data, list) or not data:
+            break
+        for coin in data:
+            if not isinstance(coin, dict):
+                continue
+            state = coin.get("mayhem_state")
+            mint = coin.get("mint")
+            if mint and isinstance(state, str) and state:
+                out[mint] = state
+        if len(data) < 50:
+            break
+    return out
+
+
 async def pumpfun_mayhem_state(mint: str, client: Optional[httpx.AsyncClient] = None) -> Optional[str]:
     """Return a pump.fun coin's Mayhem Mode state ('active' / 'paused' /
     'completed'), or None for normal coins and for lookup failures.
 
-    Only pump.fun mints (they end in 'pump') are queried. pump.fun flags
-    Mayhem coins openly in its coin record; a normal coin's mayhem_state is
-    null. Failures return None (fail open) — callers that must not trade a
-    Mayhem coin still have the ingestion filter and the rest of the gate.
+    Only pump.fun mints (they end in 'pump') are considered. The flag is
+    read from pump.fun's newest-coins list, cached briefly and shared by
+    all callers. A mint too old to appear in the newest pages, or a failed
+    fetch, returns None (fail open) — such coins still face the rest of
+    the safety gate, and anything caught while new stays excluded.
     """
+    global _mayhem_map, _mayhem_map_at
     if not mint or not mint.endswith("pump"):
         return None
-    own_client = client is None
-    if own_client:
-        client = httpx.AsyncClient()
-    assert client is not None
-    try:
-        data = await _get_json(client, PUMPFUN_COIN_URL.format(mint))
-        if isinstance(data, dict):
-            state = data.get("mayhem_state")
-            if isinstance(state, str) and state:
-                return state
-        return None
-    finally:
+    now = time.time()
+    if now - _mayhem_map_at > MAYHEM_CACHE_TTL_SECONDS:
+        own_client = client is None
         if own_client:
-            await client.aclose()
+            client = httpx.AsyncClient()
+        assert client is not None
+        try:
+            fresh = await _fetch_mayhem_map(client)
+            if fresh:
+                _mayhem_map = fresh
+                _mayhem_map_at = now
+        finally:
+            if own_client:
+                await client.aclose()
+    return _mayhem_map.get(mint)
 
 
 async def _rpc(client: httpx.AsyncClient, method: str, params: list, tries: int = 2) -> Optional[dict]:
@@ -488,4 +522,7 @@ async def safety_gate(mint: str) -> tuple[bool, dict]:
 
 
 def clear_cache() -> None:
+    global _mayhem_map, _mayhem_map_at
     _cache.clear()
+    _mayhem_map = {}
+    _mayhem_map_at = 0.0

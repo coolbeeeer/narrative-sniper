@@ -16,41 +16,45 @@ PLAIN_MINT = "SoMeMint1111111111111111111111111111111"
 
 # ---- helper ----
 
-def test_helper_returns_mayhem_state(monkeypatch):
-    async def fake_get_json(client, url, timeout=20.0):
-        return {"mayhem_state": "active"}
+def _stub_map(monkeypatch, mapping):
+    async def fake_fetch(client):
+        return dict(mapping)
 
-    monkeypatch.setattr(checker, "_get_json", fake_get_json)
+    monkeypatch.setattr(checker, "_fetch_mayhem_map", fake_fetch)
+    checker.clear_cache()
+
+
+def test_helper_returns_mayhem_state(monkeypatch):
+    _stub_map(monkeypatch, {PUMP_MINT: "active"})
     assert asyncio.run(checker.pumpfun_mayhem_state(PUMP_MINT, client=object())) == "active"
+    checker.clear_cache()
 
 
 def test_helper_normal_coin_returns_none(monkeypatch):
-    async def fake_get_json(client, url, timeout=20.0):
-        return {"mayhem_state": None}
-
-    monkeypatch.setattr(checker, "_get_json", fake_get_json)
-    assert asyncio.run(checker.pumpfun_mayhem_state(PUMP_MINT, client=object())) is None
+    _stub_map(monkeypatch, {PUMP_MINT: "active"})
+    other = "ZZZZ11111111111111111111111111111111pump"
+    assert asyncio.run(checker.pumpfun_mayhem_state(other, client=object())) is None
+    checker.clear_cache()
 
 
 def test_helper_never_queries_non_pump_mints(monkeypatch):
     called = False
 
-    async def fake_get_json(client, url, timeout=20.0):
+    async def fake_fetch(client):
         nonlocal called
         called = True
-        return {"mayhem_state": "active"}
+        return {PLAIN_MINT: "active"}
 
-    monkeypatch.setattr(checker, "_get_json", fake_get_json)
+    monkeypatch.setattr(checker, "_fetch_mayhem_map", fake_fetch)
+    checker.clear_cache()
     assert asyncio.run(checker.pumpfun_mayhem_state(PLAIN_MINT, client=object())) is None
     assert called is False
 
 
 def test_helper_lookup_failure_fails_open(monkeypatch):
-    async def fake_get_json(client, url, timeout=20.0):
-        return None
-
-    monkeypatch.setattr(checker, "_get_json", fake_get_json)
+    _stub_map(monkeypatch, {})
     assert asyncio.run(checker.pumpfun_mayhem_state(PUMP_MINT, client=object())) is None
+    checker.clear_cache()
 
 
 # ---- safety gate backstop ----
