@@ -38,6 +38,9 @@ class NarrativeResponse(BaseModel):
     cluster_size: int
     top_tokens: list[str]
     sources: list[SourceRefResponse]
+    token_mint: Optional[str] = None
+    token_symbol: Optional[str] = None
+    token_name: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 

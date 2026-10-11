@@ -6,6 +6,9 @@ export interface Narrative {
   clusterSize: number;
   topTokens: string[];
   sources: SourceRef[];
+  tokenMint?: string | null;
+  tokenSymbol?: string | null;
+  tokenName?: string | null;
   createdAt: string;
   updatedAt: string;
 }

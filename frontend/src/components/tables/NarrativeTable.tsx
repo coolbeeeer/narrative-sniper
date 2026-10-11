@@ -2,7 +2,7 @@ import { cn } from '@/lib/utils';
 import { Narrative } from '@/types';
 import { Badge } from '@/components/ui/Badge';
 import { Card, CardContent } from '@/components/ui/Card';
-import { formatUsd, formatNumber, formatShortNumber, formatTimestamp, getPnlColor } from '@/lib/utils';
+import { formatUsd, formatNumber, formatShortNumber, formatTimestamp, getPnlColor, shortenAddress } from '@/lib/utils';
 
 interface NarrativeTableProps {
   narratives: Narrative[];
@@ -73,9 +73,27 @@ export function NarrativeTable({ narratives, selectedId, onSelect, isLoading }: 
                   <td className="px-4 py-3">
                     <div className="font-medium text-foreground">{narrative.label}</div>
                     <div className="text-sm text-muted-foreground truncate max-w-xs">
-                      {narrative.clusterSize} posts
-                      {topTokens.length > 0 ? ` talking about ${topTokens.slice(0, 3).join(', ')}` : ' in this story'}
+                      {sources.some((s) => s.platform === 'dexscreener')
+                        ? `${narrative.clusterSize} buys in the last hour`
+                        : `${narrative.clusterSize} posts${topTokens.length > 0 ? ` talking about ${topTokens.slice(0, 3).join(', ')}` : ' in this story'}`}
                     </div>
+                    {narrative.tokenMint ? (
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        CA:{' '}
+                        <a
+                          href={`https://dexscreener.com/solana/${narrative.tokenMint}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          title={narrative.tokenMint}
+                          onClick={(e) => e.stopPropagation()}
+                          className="font-mono text-copper-600 hover:underline"
+                        >
+                          {shortenAddress(narrative.tokenMint)}
+                        </a>
+                      </div>
+                    ) : (
+                      <div className="text-xs text-muted-foreground/70 mt-0.5">CA: not pinned down yet</div>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <Badge

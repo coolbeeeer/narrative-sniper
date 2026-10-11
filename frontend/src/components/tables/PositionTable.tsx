@@ -2,7 +2,7 @@ import { cn } from '@/lib/utils';
 import { Position } from '@/types';
 import { Badge } from '@/components/ui/Badge';
 import { Card, CardContent } from '@/components/ui/Card';
-import { formatUsd, formatPercent, formatShortNumber, formatTimestamp, getPnlColor, getPnlBgColor } from '@/lib/utils';
+import { formatUsd, formatPercent, formatShortNumber, formatTimestamp, getPnlColor, getPnlBgColor, shortenAddress } from '@/lib/utils';
 
 interface PositionTableProps {
   positions: Position[];
@@ -60,7 +60,7 @@ export function PositionTable({ positions, selectedId, onSelect, isLoading }: Po
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {safePositions.map((position) => (
+              {openPositions.map((position) => (
                 <tr
                   key={position.id}
                   onClick={() => onSelect(position.id)}
@@ -76,6 +76,21 @@ export function PositionTable({ positions, selectedId, onSelect, isLoading }: Po
                   <td className="px-4 py-3">
                     <div className="font-medium text-foreground">{position.tokenSymbol}</div>
                     <div className="text-sm text-muted-foreground truncate max-w-xs">{position.tokenName}</div>
+                    {position.tokenAddress && (
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        CA:{' '}
+                        <a
+                          href={`https://dexscreener.com/solana/${position.tokenAddress}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          title={position.tokenAddress}
+                          onClick={(e) => e.stopPropagation()}
+                          className="font-mono text-copper-600 hover:underline"
+                        >
+                          {shortenAddress(position.tokenAddress)}
+                        </a>
+                      </div>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <Badge variant="outline" size="sm">{position.narrativeLabel}</Badge>
@@ -129,6 +144,21 @@ export function PositionTable({ positions, selectedId, onSelect, isLoading }: Po
                   <td className="px-4 py-3">
                     <div className="font-medium text-foreground">{position.tokenSymbol}</div>
                     <div className="text-sm text-muted-foreground truncate max-w-xs">{position.tokenName}</div>
+                    {position.tokenAddress && (
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        CA:{' '}
+                        <a
+                          href={`https://dexscreener.com/solana/${position.tokenAddress}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          title={position.tokenAddress}
+                          onClick={(e) => e.stopPropagation()}
+                          className="font-mono text-copper-600 hover:underline"
+                        >
+                          {shortenAddress(position.tokenAddress)}
+                        </a>
+                      </div>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <Badge variant="outline" size="sm">{position.narrativeLabel}</Badge>
@@ -154,7 +184,7 @@ export function PositionTable({ positions, selectedId, onSelect, isLoading }: Po
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <Badge variant="default" size="sm">closed</Badge>
+                    <Badge variant="default" size="sm">Sold</Badge>
                   </td>
                   <td className="px-4 py-3 text-sm text-muted-foreground">
                     {formatTimestamp(position.entryTime)}

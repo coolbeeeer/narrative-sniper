@@ -28,6 +28,9 @@ export function mapNarrative(raw: Raw): Narrative {
     clusterSize: pick(raw, 'clusterSize', 'cluster_size') ?? 0,
     topTokens: pick(raw, 'topTokens', 'top_tokens') ?? [],
     sources: (raw?.sources ?? []).map(mapSourceRef),
+    tokenMint: pick(raw, 'tokenMint', 'token_mint') ?? null,
+    tokenSymbol: pick(raw, 'tokenSymbol', 'token_symbol') ?? null,
+    tokenName: pick(raw, 'tokenName', 'token_name') ?? null,
     createdAt: pick(raw, 'createdAt', 'created_at') ?? '',
     updatedAt: pick(raw, 'updatedAt', 'updated_at') ?? '',
   };

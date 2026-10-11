@@ -37,8 +37,13 @@ export function formatShortNumber(value: number): string {
   return value.toFixed(2);
 }
 
-export function formatTimestamp(timestamp: string): string {
-  const date = new Date(timestamp);
+/** Shorten a Solana address for display: AbCd…WxYz (full value in title). */
+export function shortenAddress(address: string): string {
+  if (!address || address.length <= 10) return address;
+  return `${address.slice(0, 4)}…${address.slice(-4)}`;
+}
+
+export function formatTimestamp(timestamp: string): string {  const date = new Date(timestamp);
   return date.toLocaleString('en-US', {
     month: 'short',
     day: 'numeric',

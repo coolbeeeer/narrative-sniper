@@ -61,7 +61,7 @@ export default function DashboardPage() {
       ? `Working. ${openPositions.length} trade${openPositions.length === 1 ? ' is' : 's are'} open right now, worth ${formatUsd(totalValue)}.`
       : safeNarratives.length === 0
         ? 'Listening. No stories found yet — stories appear when a crowd starts talking about the same coin.'
-        : `Watching. ${safeNarratives.length} ${safeNarratives.length === 1 ? 'story' : 'stories'} found, no trades yet. The biggest crowd is ${biggestCrowd} posts. A story must also pass the safety check before any (pretend) money goes in.`;
+        : `Watching. ${safeNarratives.length} ${safeNarratives.length === 1 ? 'story' : 'stories'} found, no trades yet. The biggest crowd is ${biggestCrowd.toLocaleString()}. A story must also pass the safety check before any (pretend) money goes in.`;
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-6 lg:p-8">

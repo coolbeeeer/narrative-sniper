@@ -4,18 +4,18 @@ import { cn } from '@/lib/utils';
 import { LiveStatus } from '@/types';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
-import { formatShortNumber } from '@/lib/utils';
-
 interface LiveStatusProps {
   status: LiveStatus | null;
   isLoading?: boolean;
 }
 
+const whole = (v: number) => Math.round(v).toLocaleString('en-US');
+
 const statusItems = [
-  { key: 'ingestionRate', label: 'Posts seen per min', format: (v: number) => formatShortNumber(v) },
-  { key: 'queueDepth', label: 'Waiting to be checked', format: (v: number) => formatShortNumber(v) },
-  { key: 'activeNarratives', label: 'Stories found', format: (v: number) => formatShortNumber(v) },
-  { key: 'openPositions', label: 'Trades open now', format: (v: number) => formatShortNumber(v) },
+  { key: 'ingestionRate', label: 'Posts seen per min', format: whole },
+  { key: 'queueDepth', label: 'Waiting to be checked', format: whole },
+  { key: 'activeNarratives', label: 'Stories found', format: whole },
+  { key: 'openPositions', label: 'Trades open now', format: whole },
 ] as const;
 
 export function LiveStatusCard({ status, isLoading }: LiveStatusProps) {
