@@ -29,6 +29,9 @@ class Narrative(BaseModel):
     # dashboard can explain itself: "traded" | "not_traded" | None (pending).
     trade_status: Optional[str] = None
     trade_reason: Optional[str] = None
+    # Market cap at the moment the volume watcher caught this coin
+    # (watcher-born narratives only; None for social-born ones).
+    caught_market_cap: Optional[float] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 

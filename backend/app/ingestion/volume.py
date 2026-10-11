@@ -41,13 +41,18 @@ logger = structlog.get_logger()
 DEXSCREENER_BOOSTS_URL = "https://api.dexscreener.com/token-boosts/top/v1"
 
 
-def is_spike(prev_h1_volume: Optional[float], stats: dict) -> bool:
-    """Pure spike test, kept separate so it can be unit-tested without I/O."""
+def is_spike(prev_h1_volume: Optional[float], stats: dict,
+             min_buys: Optional[int] = None, min_volume: Optional[float] = None) -> bool:
+    """Pure spike test, kept separate so it can be unit-tested without I/O.
+
+    With no explicit floors it uses the full-surge settings; the watcher
+    passes the lower early-warning floors for its first tier.
+    """
     buys = stats.get("buys_h1") or 0
     volume = stats.get("volume_h1") or 0.0
-    if buys < settings.VOLUME_MIN_BUYS_H1:
+    if buys < (settings.VOLUME_MIN_BUYS_H1 if min_buys is None else min_buys):
         return False
-    if volume < settings.VOLUME_MIN_VOLUME_H1_USD:
+    if volume < (settings.VOLUME_MIN_VOLUME_H1_USD if min_volume is None else min_volume):
         return False
     if prev_h1_volume is not None and prev_h1_volume > 0:
         if volume < prev_h1_volume * settings.VOLUME_SPIKE_MULTIPLE:
@@ -78,6 +83,7 @@ def parse_pair_stats(payload) -> Optional[dict]:
         "symbol": base.get("symbol") or "",
         "name": base.get("name") or "",
         "price_usd": pair.get("priceUsd"),
+        "market_cap": pair.get("marketCap") or pair.get("fdv"),
         "liquidity_usd": liquidity(pair),
         "volume_h1": float(volume.get("h1") or 0),
         "volume_h24": float(volume.get("h24") or 0),
@@ -95,7 +101,8 @@ class VolumeWatcher:
         self.task: Optional[asyncio.Task] = None
         self._client: Optional[httpx.AsyncClient] = None
         self.last_volume_h1: dict[str, float] = {}   # mint -> previous h1 volume
-        self.alerted_at: dict[str, datetime] = {}    # mint -> last alert time
+        self.alerted_at: dict[str, datetime] = {}    # mint -> last full-surge alert time
+        self.early_alerted_at: dict[str, datetime] = {}  # mint -> last early-warning time
         self.boosted_mints: list[str] = []           # latest DexScreener top-boosted set
         self.poll_count = 0
         self.alert_count = 0
@@ -158,6 +165,8 @@ class VolumeWatcher:
         self.last_poll = datetime.now(timezone.utc)
 
         # Newest tracked launches first: silent pumps are a young-token game.
+        # The window is wide (VOLUME_WATCH_LIMIT) and fetches are batched,
+        # so a coin stays watched while its numbers ripen, not just at birth.
         mints = list(self.launches.seen_order)[-settings.VOLUME_WATCH_LIMIT:]
         # Plus the coins taking off right now, of any age (DexScreener's
         # most-boosted list), deduped against the launches.
@@ -166,17 +175,58 @@ class VolumeWatcher:
             for mint in self.boosted_mints:
                 if mint not in mints:
                     mints.append(mint)
+
+        stats_by_mint = await self._fetch_stats_batch(mints)
         for mint in mints:
-            stats = await self._fetch_stats(mint)
+            stats = stats_by_mint.get(mint)
             if stats is None:
                 continue
             prev = self.last_volume_h1.get(mint)
             self.last_volume_h1[mint] = stats["volume_h1"]
             if not self._in_cooldown(mint) and is_spike(prev, stats):
-                if settings.EXCLUDE_MAYHEM_COINS and await pumpfun_mayhem_state(mint, self._client):
-                    logger.info("Volume alert suppressed: pump.fun Mayhem Mode coin", mint=mint)
-                    continue
-                await self._alert(mint, stats)
+                tier = "surge"
+            elif (
+                not self._in_cooldown(mint, self.early_alerted_at)
+                and not self._in_cooldown(mint)
+                and is_spike(prev, stats,
+                             min_buys=settings.VOLUME_EARLY_MIN_BUYS_H1,
+                             min_volume=settings.VOLUME_EARLY_MIN_VOLUME_H1_USD)
+            ):
+                tier = "early"
+            else:
+                continue
+            if settings.EXCLUDE_MAYHEM_COINS and await pumpfun_mayhem_state(mint, self._client):
+                logger.info("Volume alert suppressed: pump.fun Mayhem Mode coin", mint=mint)
+                continue
+            await self._alert(mint, stats, early=(tier == "early"))
+
+    async def _fetch_stats_batch(self, mints: list[str]) -> dict[str, dict]:
+        """DexScreener stats for many mints in a few batched requests
+        (the tokens endpoint accepts up to 30 addresses per call)."""
+        out: dict[str, dict] = {}
+        for i in range(0, len(mints), 30):
+            chunk = mints[i:i + 30]
+            try:
+                r = await self._client.get(
+                    DEXSCREENER_URL.format(",".join(chunk)), timeout=20.0,
+                    headers={"User-Agent": "narrative-sniper/1.0"},
+                )
+                r.raise_for_status()
+                payload = r.json()
+            except Exception as e:
+                logger.debug("Volume batch fetch failed", error=str(e))
+                continue
+            pairs = payload if isinstance(payload, list) else (payload or {}).get("pairs") or []
+            by_mint: dict[str, list] = {}
+            for pair in pairs:
+                addr = (pair.get("baseToken") or {}).get("address")
+                if addr:
+                    by_mint.setdefault(addr, []).append(pair)
+            for mint in chunk:
+                stats = parse_pair_stats(by_mint.get(mint) or [])
+                if stats is not None:
+                    out[mint] = stats
+        return out
 
     async def _fetch_boosted_mints(self) -> list[str]:
         """Solana mints from DexScreener's most-boosted list (top first)."""
@@ -201,41 +251,47 @@ class VolumeWatcher:
                 break
         return out
 
-    def _in_cooldown(self, mint: str) -> bool:
-        last = self.alerted_at.get(mint)
+    def _in_cooldown(self, mint: str, mapping: Optional[dict] = None) -> bool:
+        last = (self.alerted_at if mapping is None else mapping).get(mint)
         if not last:
             return False
         return datetime.now(timezone.utc) - last < timedelta(hours=settings.VOLUME_COOLDOWN_HOURS)
 
-    async def _fetch_stats(self, mint: str) -> Optional[dict]:
-        try:
-            r = await self._client.get(
-                DEXSCREENER_URL.format(mint), timeout=15.0,
-                headers={"User-Agent": "narrative-sniper/1.0"},
-            )
-            r.raise_for_status()
-            return parse_pair_stats(r.json())
-        except Exception as e:
-            logger.debug("Volume stats fetch failed", mint=mint, error=str(e))
-            return None
-
     # ---- alerting ----
 
-    async def _alert(self, mint: str, stats: dict):
-        self.alerted_at[mint] = datetime.now(timezone.utc)
+    async def _alert(self, mint: str, stats: dict, early: bool = False):
+        now = datetime.now(timezone.utc)
+        if early:
+            self.early_alerted_at[mint] = now
+        else:
+            self.alerted_at[mint] = now
         self.alert_count += 1
         symbol = stats["symbol"] or mint[:6]
         buys = stats["buys_h1"]
         volume = stats["volume_h1"]
-        # Confidence scales with the size of the buying crowd, capped.
-        confidence = min(0.95, 0.7 + buys / 2000.0)
+        market_cap = stats.get("market_cap")
+        mc_clause = f" Caught at ${market_cap:,.0f} market cap." if market_cap else ""
+        if early:
+            label = f"Early buying activity: ${symbol}"
+            description = (
+                f"Early warning on a small coin: {buys} buys in the last hour, "
+                f"${volume:,.0f} traded.{mc_clause} Shown early — the usual "
+                f"safety rules still judge it before any trade."
+            )
+            # Deliberately modest: early warnings are a heads-up, not a call.
+            confidence = min(0.85, 0.65 + buys / 2000.0)
+        else:
+            label = f"Silent buying surge: ${symbol}"
+            description = (
+                f"{buys} buys in the last hour, ${volume:,.0f} traded — "
+                f"and hardly anyone is posting about it.{mc_clause}"
+            )
+            # Confidence scales with the size of the buying crowd, capped.
+            confidence = min(0.95, 0.7 + buys / 2000.0)
         narrative = Narrative(
             id=str(uuid.uuid4()),
-            label=f"Silent buying surge: ${symbol}",
-            description=(
-                f"{buys} buys in the last hour, ${volume:,.0f} traded — "
-                f"and hardly anyone is posting about it."
-            ),
+            label=label,
+            description=description,
             confidence=confidence,
             cluster_size=buys,
             top_tokens=[symbol] if symbol else [],
@@ -243,15 +299,17 @@ class VolumeWatcher:
                 platform="dexscreener",
                 handle="volume-watcher",
                 url=stats["url"] or f"https://dexscreener.com/solana/{mint}",
-                timestamp=datetime.now(timezone.utc).isoformat(),
+                timestamp=now.isoformat(),
                 engagement=buys,
             )],
             token_mint=mint,
             token_symbol=symbol,
             token_name=stats["name"] or symbol,
+            caught_market_cap=float(market_cap) if market_cap else None,
         )
         logger.info(
             "Volume spike alert",
             symbol=symbol, mint=mint, buys_h1=buys, volume_h1=volume,
+            market_cap=market_cap, early=early,
         )
         await self.pipeline.emit_narrative(narrative)

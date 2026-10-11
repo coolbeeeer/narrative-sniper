@@ -33,6 +33,7 @@ export function mapNarrative(raw: Raw): Narrative {
     tokenName: pick(raw, 'tokenName', 'token_name') ?? null,
     tradeStatus: pick(raw, 'tradeStatus', 'trade_status') ?? null,
     tradeReason: pick(raw, 'tradeReason', 'trade_reason') ?? null,
+    caughtMarketCap: pick(raw, 'caughtMarketCap', 'caught_market_cap') ?? null,
     createdAt: pick(raw, 'createdAt', 'created_at') ?? '',
     updatedAt: pick(raw, 'updatedAt', 'updated_at') ?? '',
   };

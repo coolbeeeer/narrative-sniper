@@ -107,9 +107,15 @@ class Settings(BaseSettings):
     # Volume watcher (catches silent buying: trading surges with no posts)
     VOLUME_ENABLED: bool = True
     VOLUME_POLL_SECONDS: int = 60
-    VOLUME_WATCH_LIMIT: int = 40          # newest tracked tokens checked per poll
+    VOLUME_WATCH_LIMIT: int = 200         # newest tracked tokens checked per poll (batched fetches)
     VOLUME_BOOST_ENABLED: bool = True     # also watch DexScreener's most-boosted coins (taking off, any age)
     VOLUME_BOOST_LIMIT: int = 30          # boosted tokens checked per poll
+    # Early-warning tier: lower floors that raise an "Early buying activity"
+    # story for small, young coins. Purely an earlier heads-up — the trade
+    # gates (confidence, safety, liquidity) are unchanged and will still
+    # refuse to trade most of these.
+    VOLUME_EARLY_MIN_BUYS_H1: int = 75
+    VOLUME_EARLY_MIN_VOLUME_H1_USD: float = 3000.0
     VOLUME_MIN_BUYS_H1: int = 150         # buys in the last hour
     VOLUME_MIN_VOLUME_H1_USD: float = 10000.0
     VOLUME_SPIKE_MULTIPLE: float = 3.0    # h1 volume vs the previous reading

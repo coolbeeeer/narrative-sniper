@@ -87,6 +87,11 @@ export function NarrativeTable({ narratives, selectedId, onSelect, isLoading }: 
                     ) : (
                       <div className="text-xs text-muted-foreground/70 mt-0.5">CA: not pinned down yet</div>
                     )}
+                    {narrative.caughtMarketCap ? (
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        Caught at <span className="font-medium text-foreground">{formatUsd(narrative.caughtMarketCap)}</span> market cap
+                      </div>
+                    ) : null}
                     {narrative.tradeStatus === 'traded' ? (
                       <div className="text-xs font-medium text-green-600 dark:text-green-400 mt-1" title={narrative.tradeReason ?? undefined}>
                         Traded ✓ {narrative.tradeReason}

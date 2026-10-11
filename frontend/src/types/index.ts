@@ -11,6 +11,7 @@ export interface Narrative {
   tokenName?: string | null;
   tradeStatus?: string | null;
   tradeReason?: string | null;
+  caughtMarketCap?: number | null;
   createdAt: string;
   updatedAt: string;
 }

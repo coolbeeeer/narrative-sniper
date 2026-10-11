@@ -51,16 +51,17 @@ def _watcher(monkeypatch, boosted):
     async def fake_boosted():
         return list(boosted)
 
-    async def fake_stats(mint):
-        return {
+    async def fake_stats_batch(mints):
+        return {m: {
             "symbol": "HOT", "name": "Hot Coin", "price_usd": "0.1",
+            "market_cap": 27_478.0,
             "liquidity_usd": 50_000.0, "volume_h1": 60_000.0,
             "volume_h24": 90_000.0, "buys_h1": 400, "sells_h1": 100,
             "url": "https://dexscreener.com/solana/x",
-        }
+        } for m in mints}
 
     monkeypatch.setattr(watcher, "_fetch_boosted_mints", fake_boosted)
-    monkeypatch.setattr(watcher, "_fetch_stats", fake_stats)
+    monkeypatch.setattr(watcher, "_fetch_stats_batch", fake_stats_batch)
     return watcher, pipeline
 
 

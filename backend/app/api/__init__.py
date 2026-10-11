@@ -43,6 +43,7 @@ class NarrativeResponse(BaseModel):
     token_name: Optional[str] = None
     trade_status: Optional[str] = None
     trade_reason: Optional[str] = None
+    caught_market_cap: Optional[float] = None
     created_at: datetime
     updated_at: datetime
 
