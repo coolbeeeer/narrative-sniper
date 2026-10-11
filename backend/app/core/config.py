@@ -104,6 +104,21 @@ class Settings(BaseSettings):
     # pump.fun's own trading agent, not a real crowd).
     EXCLUDE_MAYHEM_COINS: bool = True
 
+    # ---- Live trading (real money) ----
+    # Off by default; every startup begins in paper mode. Enabling live at
+    # runtime additionally requires a configured bot wallet and an explicit
+    # confirmation through the config API.
+    LIVE_TRADING_ENABLED: bool = False
+    # The bot wallet's base58 secret key. Set ONLY in the local .env file —
+    # never commit it (the repo is public and .env is gitignored). Anyone
+    # with this key controls the wallet, so fund the wallet accordingly.
+    BOT_WALLET_PRIVATE_KEY: str = ""
+    SOLANA_RPC_URL: str = "https://api.mainnet-beta.solana.com"
+    LIVE_SLIPPAGE_BPS: int = 300            # 3% — memecoins move fast
+    LIVE_DAILY_LOSS_LIMIT_USD: float = 100.0  # real-money losses today beyond this halt new live buys
+    LIVE_MIN_SOL_RESERVE: float = 0.02       # SOL always kept back for network fees
+    LIVE_POSITIONS_FILE: str = "data/live_positions.json"
+
     # Volume watcher (catches silent buying: trading surges with no posts)
     VOLUME_ENABLED: bool = True
     VOLUME_POLL_SECONDS: int = 60

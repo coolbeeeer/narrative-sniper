@@ -74,6 +74,8 @@ export interface PaginatedResponse<T> {
 
 export interface AppConfig {
   paper_trading: boolean;
+  live_trading_enabled: boolean;
+  live_daily_loss_limit_usd: number;
   max_position_size_usd: number;
   max_daily_loss_usd: number;
   slippage_bps: number;
@@ -87,4 +89,11 @@ export interface AppConfig {
   signal_cooldown_hours: number;
   signal_take_profit_pct: number;
   signal_stop_loss_pct: number;
+}
+
+export interface WalletStatus {
+  configured: boolean;
+  address: string | null;
+  sol_balance: number | null;
+  live_trading_enabled: boolean;
 }

@@ -12,6 +12,9 @@ from app.intelligence.pipeline import IntelligencePipeline
 from app.execution.engine import ExecutionEngine
 from app.paper_trading.engine import PaperTradingEngine
 from app.signals.engine import SignalEngine
+from app.live.wallet import BotWallet
+from app.live.jupiter import JupiterClient
+from app.live.engine import LiveTradingEngine
 
 
 logger = structlog.get_logger()
@@ -44,6 +47,8 @@ intelligence_pipeline: IntelligencePipeline | None = None
 execution_engine: ExecutionEngine | None = None
 paper_trading_engine: PaperTradingEngine | None = None
 signal_engine: SignalEngine | None = None
+bot_wallet: BotWallet | None = None
+live_trading_engine: LiveTradingEngine | None = None
 j7_ingestion: J7Ingestion | None = None
 launch_ingestion: LaunchIngestion | None = None
 volume_watcher: VolumeWatcher | None = None
@@ -55,7 +60,7 @@ async def _broadcast_event(event: dict):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global ingestion_manager, intelligence_pipeline, execution_engine, paper_trading_engine, signal_engine, j7_ingestion, launch_ingestion, volume_watcher
+    global ingestion_manager, intelligence_pipeline, execution_engine, paper_trading_engine, signal_engine, j7_ingestion, launch_ingestion, volume_watcher, bot_wallet, live_trading_engine
 
     logger.info("Starting Narrative Sniper backend")
 
@@ -70,8 +75,25 @@ async def lifespan(app: FastAPI):
     await paper_trading_engine.initialize()
     paper_trading_engine.set_execution_engine(execution_engine)
 
-    # Signal engine: narrative -> trade decisions (paper)
-    signal_engine = SignalEngine(paper_trading_engine, on_event=_broadcast_event)
+    # Live trading: the bot wallet and live engine exist only when a
+    # wallet key is configured. A malformed key must never take the app
+    # down — log it loudly and carry on in paper mode.
+    bot_wallet = None
+    live_trading_engine = None
+    try:
+        bot_wallet = BotWallet.load()
+    except ValueError as e:
+        logger.error("Bot wallet key is invalid; live trading unavailable", error=str(e))
+    if bot_wallet is not None:
+        live_trading_engine = LiveTradingEngine(bot_wallet, JupiterClient(bot_wallet))
+        await live_trading_engine.initialize()
+        logger.info("Live trading engine ready", wallet=bot_wallet.address)
+
+    # Signal engine: narrative -> trade decisions (paper, or live when the
+    # live toggle is on and a wallet is configured)
+    signal_engine = SignalEngine(
+        paper_trading_engine, on_event=_broadcast_event, live_trading=live_trading_engine,
+    )
     intelligence_pipeline.on_narrative(signal_engine.evaluate)
     await signal_engine.start()
 
@@ -204,6 +226,17 @@ def get_volume_watcher() -> VolumeWatcher:
     if volume_watcher is None:
         raise RuntimeError("Volume watcher not initialized")
     return volume_watcher
+
+
+def get_bot_wallet() -> BotWallet | None:
+    """The configured bot wallet, or None when no key is set. Callers
+    (status endpoint, config guards) handle None explicitly."""
+    return bot_wallet
+
+
+def get_live_trading_engine() -> LiveTradingEngine | None:
+    """The live engine, or None when no bot wallet is configured."""
+    return live_trading_engine
 
 
 # Imported after the getter functions to avoid a circular import:

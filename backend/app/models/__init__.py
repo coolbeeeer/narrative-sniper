@@ -75,6 +75,7 @@ class Position(BaseModel):
     tx_signature: Optional[str] = None
     exit_price: Optional[float] = None
     exit_time: Optional[datetime] = None
+    exit_tx_signature: Optional[str] = None
     realized_pnl: float = 0.0
 
 

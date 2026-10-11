@@ -29,13 +29,25 @@ class SignalEngine:
         self,
         paper_trading: PaperTradingEngine,
         on_event: Optional[Callable[[dict], Awaitable[None]]] = None,
+        live_trading=None,
     ):
         self.paper_trading = paper_trading
+        self.live_trading = live_trading
         self.prices = PriceLookup()
         self.on_event = on_event
         self.last_trade_at: dict[str, datetime] = {}  # symbol -> last entry time
         self.running = False
         self.monitor_task: Optional[asyncio.Task] = None
+
+    @property
+    def trading(self):
+        """The engine trades actually route through right now: the live
+        engine when live mode is on and a bot wallet is configured,
+        otherwise the paper engine. Read fresh on every call so the
+        dashboard toggle takes effect immediately."""
+        if settings.LIVE_TRADING_ENABLED and self.live_trading is not None:
+            return self.live_trading
+        return self.paper_trading
 
     async def start(self):
         self.running = True
@@ -101,7 +113,7 @@ class SignalEngine:
             return
 
         # duplicate / cooldown checks
-        open_positions = await self.paper_trading.get_positions(status="open")
+        open_positions = await self.trading.get_positions(status="open")
         if any(p.token_symbol == symbol for p in open_positions):
             logger.debug("Signal rejected: already holding", symbol=symbol)
             self._decide(narrative, False, f"Already holding ${symbol}.")
@@ -185,7 +197,7 @@ class SignalEngine:
             entry_market_cap = getattr(narrative, "caught_market_cap", None)
 
         try:
-            position = await self.paper_trading.open_position(
+            position = await self.trading.open_position(
                 token_address=quote["address"],
                 token_symbol=quote["symbol"],
                 token_name=quote["name"],
@@ -243,7 +255,7 @@ class SignalEngine:
             await asyncio.sleep(60)
 
     async def _check_exits(self):
-        positions = await self.paper_trading.get_positions(status="open")
+        positions = await self.trading.get_positions(status="open")
         for position in positions:
             price = await self.prices.price_by_address(position.token_address)
             if not price:
@@ -262,7 +274,21 @@ class SignalEngine:
                 await self._close(position, price, "stop_loss", pnl)
 
     async def _close(self, position, price: float, reason: str, pnl_pct: float):
-        closed = await self.paper_trading.close_position(position.id, exit_price=price)
+        try:
+            closed = await self.trading.close_position(position.id, exit_price=price)
+        except Exception as e:
+            # A live sell can fail (network, slippage, RPC). The position
+            # stays open and the monitor retries on the next tick — a
+            # failed exit must never be booked as a completed one.
+            logger.error("Position close failed; will retry", symbol=position.token_symbol, error=str(e))
+            await self._emit({
+                "type": "trade_close_failed",
+                "symbol": position.token_symbol,
+                "reason": reason,
+                "error": str(e),
+                "position_id": position.id,
+            })
+            return
         if closed:
             await self._emit({
                 "type": "trade_closed",

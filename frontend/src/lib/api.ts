@@ -156,6 +156,19 @@ class ApiClient {
     return response.data;
   }
 
+  async getWalletStatus() {
+    const response = await this.client.get('/api/wallet/status');
+    return response.data;
+  }
+
+  async setLiveTrading(enabled: boolean) {
+    const response = await this.client.patch('/api/config', {
+      live_trading_enabled: enabled,
+      ...(enabled ? { confirm_live: 'LIVE' } : {}),
+    });
+    return response.data;
+  }
+
   createWebSocket() {
     return new WebSocket(`${WS_BASE}/ws`);
   }

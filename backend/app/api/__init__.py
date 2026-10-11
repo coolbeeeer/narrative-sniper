@@ -9,6 +9,8 @@ from app.main import (
     get_intelligence_pipeline,
     get_execution_engine,
     get_paper_trading_engine,
+    get_bot_wallet,
+    get_live_trading_engine,
     get_launch_ingestion,
     get_volume_watcher,
 )
@@ -100,8 +102,19 @@ class VolumeStatusResponse(BaseModel):
     last_poll: Optional[str] = None
 
 
+class WalletStatusResponse(BaseModel):
+    configured: bool
+    address: Optional[str] = None
+    sol_balance: Optional[float] = None
+    live_trading_enabled: bool = False
+
+
 class ConfigResponse(BaseModel):
     paper_trading: bool
+    # Live trading (real money): on/off plus its daily loss limit. The
+    # bot wallet itself is reported by /wallet/status.
+    live_trading_enabled: bool = False
+    live_daily_loss_limit_usd: float = 100.0
     max_position_size_usd: float
     max_daily_loss_usd: float
     slippage_bps: int
@@ -120,6 +133,11 @@ class ConfigResponse(BaseModel):
 
 class ConfigUpdate(BaseModel):
     paper_trading: Optional[bool] = None
+    # Live trading switch. Turning it ON requires confirm_live="LIVE"
+    # and a configured bot wallet; turning it off is always allowed.
+    live_trading_enabled: Optional[bool] = None
+    confirm_live: Optional[str] = None
+    live_daily_loss_limit_usd: Optional[float] = None
     max_position_size_usd: Optional[float] = None
     max_daily_loss_usd: Optional[float] = None
     slippage_bps: Optional[int] = None
@@ -160,13 +178,25 @@ async def get_narrative(
     return narrative
 
 
+def _active_trading_engine(paper_trading: PaperTradingEngine):
+    """Positions and PnL come from the live engine while live mode is on
+    (and a wallet exists), otherwise from the paper engine — the same
+    rule the signal engine trades by."""
+    if settings.LIVE_TRADING_ENABLED:
+        live = get_live_trading_engine()
+        if live is not None:
+            return live
+    return paper_trading
+
+
 @router.get("/positions", response_model=list[PositionResponse])
 async def get_positions(
     status: Optional[str] = Query(None),
     narrative_id: Optional[str] = Query(None),
     paper_trading: PaperTradingEngine = Depends(get_paper_trading_engine),
 ):
-    positions = await paper_trading.get_positions(status=status, narrative_id=narrative_id)
+    engine = _active_trading_engine(paper_trading)
+    positions = await engine.get_positions(status=status, narrative_id=narrative_id)
     return positions
 
 
@@ -175,7 +205,8 @@ async def get_position(
     position_id: str,
     paper_trading: PaperTradingEngine = Depends(get_paper_trading_engine),
 ):
-    position = await paper_trading.get_position(position_id)
+    engine = _active_trading_engine(paper_trading)
+    position = await engine.get_position(position_id)
     if not position:
         raise HTTPException(status_code=404, detail="Position not found")
     return position
@@ -186,7 +217,8 @@ async def get_pnl_history(
     range: str = Query("24h", pattern="^(1h|24h|7d|30d)$"),
     paper_trading: PaperTradingEngine = Depends(get_paper_trading_engine),
 ):
-    history = await paper_trading.get_pnl_history(range)
+    engine = _active_trading_engine(paper_trading)
+    history = await engine.get_pnl_history(range)
     return history
 
 
@@ -195,14 +227,19 @@ async def get_live_status(
     ingestion: IngestionManager = Depends(get_ingestion_manager),
     paper_trading: PaperTradingEngine = Depends(get_paper_trading_engine),
 ):
+    engine = _active_trading_engine(paper_trading)
+    if hasattr(engine, "get_open_positions_count"):
+        open_count = await engine.get_open_positions_count()
+    else:
+        open_count = len(await engine.get_positions(status="open"))
     return LiveStatusResponse(
         is_connected=ingestion.is_healthy(),
         last_update=datetime.utcnow(),
         ingestion_rate=ingestion.get_ingestion_rate(),
         queue_depth=ingestion.get_queue_depth(),
         active_narratives=ingestion.get_active_narratives_count(),
-        open_positions=await paper_trading.get_open_positions_count(),
-        paper_trading=settings.PAPER_TRADING,
+        open_positions=open_count,
+        paper_trading=not settings.LIVE_TRADING_ENABLED,
     )
 
 
@@ -236,10 +273,22 @@ async def get_volume_status():
         return VolumeStatusResponse(enabled=False, running=False, tokens_watched=0, alerts_sent=0)
 
 
+@router.get("/wallet/status", response_model=WalletStatusResponse)
+async def get_wallet_status():
+    """Bot wallet status for the dashboard. The secret key is never
+    exposed — only the public address and balance."""
+    from app.live.wallet import BotWallet
+
+    wallet = get_bot_wallet()
+    if wallet is None:
+        return WalletStatusResponse(**BotWallet.unconfigured_status())
+    return WalletStatusResponse(**await wallet.status())
+
+
 @router.get("/config", response_model=ConfigResponse)
 async def get_config():
     return ConfigResponse(
-        paper_trading=settings.PAPER_TRADING,
+        paper_trading=not settings.LIVE_TRADING_ENABLED,
         max_position_size_usd=settings.MAX_POSITION_SIZE_USD,
         max_daily_loss_usd=settings.MAX_DAILY_LOSS_USD,
         slippage_bps=settings.SLIPPAGE_BPS,
@@ -253,6 +302,8 @@ async def get_config():
         signal_cooldown_hours=settings.SIGNAL_COOLDOWN_HOURS,
         signal_take_profit_pct=settings.SIGNAL_TAKE_PROFIT_PCT,
         signal_stop_loss_pct=settings.SIGNAL_STOP_LOSS_PCT,
+        live_trading_enabled=settings.LIVE_TRADING_ENABLED,
+        live_daily_loss_limit_usd=settings.LIVE_DAILY_LOSS_LIMIT_USD,
     )
 
 
@@ -294,11 +345,35 @@ async def update_config(
         settings.SIGNAL_TAKE_PROFIT_PCT = config.signal_take_profit_pct
     if config.signal_stop_loss_pct is not None:
         settings.SIGNAL_STOP_LOSS_PCT = config.signal_stop_loss_pct
+    # Live trading switch. Turning it on is deliberately hard: it needs
+    # the explicit confirmation string AND a configured bot wallet.
+    # Turning it off (back to paper) is always allowed, immediately.
+    if config.live_trading_enabled is not None:
+        if config.live_trading_enabled:
+            if config.confirm_live != "LIVE":
+                raise HTTPException(
+                    status_code=422,
+                    detail="Enabling live trading requires confirm_live='LIVE'",
+                )
+            if get_live_trading_engine() is None:
+                raise HTTPException(
+                    status_code=422,
+                    detail="Bot wallet is not configured — set BOT_WALLET_PRIVATE_KEY in the backend .env and restart",
+                )
+            settings.LIVE_TRADING_ENABLED = True
+            settings.PAPER_TRADING = False
+        else:
+            settings.LIVE_TRADING_ENABLED = False
+            settings.PAPER_TRADING = True
+    if config.live_daily_loss_limit_usd is not None:
+        if config.live_daily_loss_limit_usd <= 0:
+            raise HTTPException(status_code=422, detail="live_daily_loss_limit_usd must be positive")
+        settings.LIVE_DAILY_LOSS_LIMIT_USD = config.live_daily_loss_limit_usd
 
     await ingestion.reload_config()
 
     return ConfigResponse(
-        paper_trading=settings.PAPER_TRADING,
+        paper_trading=not settings.LIVE_TRADING_ENABLED,
         max_position_size_usd=settings.MAX_POSITION_SIZE_USD,
         max_daily_loss_usd=settings.MAX_DAILY_LOSS_USD,
         slippage_bps=settings.SLIPPAGE_BPS,
@@ -312,6 +387,8 @@ async def update_config(
         signal_cooldown_hours=settings.SIGNAL_COOLDOWN_HOURS,
         signal_take_profit_pct=settings.SIGNAL_TAKE_PROFIT_PCT,
         signal_stop_loss_pct=settings.SIGNAL_STOP_LOSS_PCT,
+        live_trading_enabled=settings.LIVE_TRADING_ENABLED,
+        live_daily_loss_limit_usd=settings.LIVE_DAILY_LOSS_LIMIT_USD,
     )
 
 

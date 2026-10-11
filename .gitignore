@@ -79,3 +79,5 @@ pip-delete-this-directory.txt
 *.pem
 *.key
 *.crt
+# Live trading runtime state (positions book — never commit)
+backend/data/
