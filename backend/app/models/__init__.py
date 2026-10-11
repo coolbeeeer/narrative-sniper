@@ -25,6 +25,10 @@ class Narrative(BaseModel):
     token_mint: Optional[str] = None
     token_symbol: Optional[str] = None
     token_name: Optional[str] = None
+    # The signal engine's verdict on this narrative, in plain words, so the
+    # dashboard can explain itself: "traded" | "not_traded" | None (pending).
+    trade_status: Optional[str] = None
+    trade_reason: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 

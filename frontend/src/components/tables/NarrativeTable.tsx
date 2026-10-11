@@ -94,6 +94,17 @@ export function NarrativeTable({ narratives, selectedId, onSelect, isLoading }: 
                     ) : (
                       <div className="text-xs text-muted-foreground/70 mt-0.5">CA: not pinned down yet</div>
                     )}
+                    {narrative.tradeStatus === 'traded' ? (
+                      <div className="text-xs font-medium text-green-600 dark:text-green-400 mt-1" title={narrative.tradeReason ?? undefined}>
+                        Traded ✓ {narrative.tradeReason}
+                      </div>
+                    ) : narrative.tradeStatus === 'not_traded' ? (
+                      <div className="text-xs text-amber-600 dark:text-amber-400 mt-1 max-w-xs" title={narrative.tradeReason ?? undefined}>
+                        Not traded: {narrative.tradeReason}
+                      </div>
+                    ) : (
+                      <div className="text-xs text-muted-foreground/70 mt-1">Being judged…</div>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <Badge

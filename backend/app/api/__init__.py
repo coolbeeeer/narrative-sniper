@@ -41,6 +41,8 @@ class NarrativeResponse(BaseModel):
     token_mint: Optional[str] = None
     token_symbol: Optional[str] = None
     token_name: Optional[str] = None
+    trade_status: Optional[str] = None
+    trade_reason: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 

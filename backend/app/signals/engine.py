@@ -62,36 +62,58 @@ class SignalEngine:
 
     # ---- entry ----
 
+    @staticmethod
+    def _decide(narrative: Narrative, traded: bool, reason: str):
+        """Record the verdict on the narrative itself, in plain words, so
+        the dashboard can explain why a story was or was not traded."""
+        narrative.trade_status = "traded" if traded else "not_traded"
+        narrative.trade_reason = reason
+
     async def evaluate(self, narrative: Narrative):
         """Called by the intelligence pipeline for every new narrative."""
         if not settings.SIGNAL_ENABLED:
+            self._decide(narrative, False, "The sniper is switched off in its settings.")
             return
 
         symbol = self._pick_symbol(narrative)
         reasons: list[str] = []
+        plain_reasons: list[str] = []
 
         if narrative.confidence < settings.SIGNAL_CONFIDENCE_THRESHOLD:
             reasons.append(f"confidence {narrative.confidence:.2f} < {settings.SIGNAL_CONFIDENCE_THRESHOLD}")
+            plain_reasons.append(
+                f"Only {narrative.confidence * 100:.0f}% sure — it needs "
+                f"{settings.SIGNAL_CONFIDENCE_THRESHOLD * 100:.0f}% before buying."
+            )
         if narrative.cluster_size < settings.SIGNAL_MIN_CLUSTER_SIZE:
             reasons.append(f"cluster size {narrative.cluster_size} < {settings.SIGNAL_MIN_CLUSTER_SIZE}")
+            plain_reasons.append(
+                f"Crowd too small: {narrative.cluster_size} — it needs "
+                f"{settings.SIGNAL_MIN_CLUSTER_SIZE}."
+            )
         if not symbol:
             reasons.append("no tradeable token symbol")
+            plain_reasons.append("No coin was named clearly enough to buy.")
 
         if reasons:
             logger.debug("Signal rejected", narrative=narrative.label, reasons=reasons)
+            self._decide(narrative, False, " ".join(plain_reasons))
             return
 
         # duplicate / cooldown checks
         open_positions = await self.paper_trading.get_positions(status="open")
         if any(p.token_symbol == symbol for p in open_positions):
             logger.debug("Signal rejected: already holding", symbol=symbol)
+            self._decide(narrative, False, f"Already holding ${symbol}.")
             return
         last = self.last_trade_at.get(symbol)
         if last and datetime.utcnow() - last < timedelta(hours=settings.SIGNAL_COOLDOWN_HOURS):
             logger.debug("Signal rejected: cooldown", symbol=symbol)
+            self._decide(narrative, False, f"${symbol} was traded recently — cooling down before buying it again.")
             return
         if len(open_positions) >= settings.SIGNAL_MAX_OPEN_POSITIONS:
             logger.debug("Signal rejected: max open positions reached")
+            self._decide(narrative, False, f"Too many trades already open (max {settings.SIGNAL_MAX_OPEN_POSITIONS}).")
             return
 
         # resolve price (free DexScreener lookup)
@@ -109,11 +131,13 @@ class SignalEngine:
                 }
             else:
                 logger.info("Signal rejected: no price for narrative mint", mint=narrative.token_mint)
+                self._decide(narrative, False, "No live price could be found for this coin.")
                 return
         else:
             quote = await self.prices.resolve_symbol(symbol)
             if not quote or not quote.get("address"):
                 logger.info("Signal rejected: no Solana price found", symbol=symbol)
+                self._decide(narrative, False, f"${symbol} could not be found trading on Solana.")
                 return
 
         # safety gate: rug checks before any paper position opens
@@ -135,12 +159,20 @@ class SignalEngine:
                 "verdict": report.get("verdict"),
                 "bottom_line": report.get("bottom_line"),
             })
+            bottom = (report.get("bottom_line") or "").strip()
+            score = report.get("score")
+            reason = "Failed the safety check"
+            if score is not None:
+                reason += f" (risk score {score}/100)"
+            reason += f": {bottom}" if bottom else "."
+            self._decide(narrative, False, reason)
             return
 
         price = quote["price_usd"]
         size_usd = min(settings.SIGNAL_POSITION_SIZE_USD, settings.MAX_POSITION_SIZE_USD)
         amount = size_usd / price
         if amount <= 0:
+            self._decide(narrative, False, "The trade size worked out to nothing at this price.")
             return
 
         try:
@@ -155,9 +187,14 @@ class SignalEngine:
             )
         except ValueError as e:
             logger.warning("Signal rejected by risk limits", symbol=symbol, error=str(e))
+            self._decide(narrative, False, f"Blocked by the risk limits: {e}")
             return
 
         self.last_trade_at[symbol] = datetime.utcnow()
+        self._decide(
+            narrative, True,
+            f"Bought ${size_usd:,.0f} worth at ${price:g} — see it under Trades.",
+        )
         await self._emit({
             "type": "trade_opened",
             "symbol": quote["symbol"],

@@ -9,6 +9,8 @@ export interface Narrative {
   tokenMint?: string | null;
   tokenSymbol?: string | null;
   tokenName?: string | null;
+  tradeStatus?: string | null;
+  tradeReason?: string | null;
   createdAt: string;
   updatedAt: string;
 }
