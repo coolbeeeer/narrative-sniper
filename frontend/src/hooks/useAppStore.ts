@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { Narrative, Position, PnLDataPoint, LiveStatus } from '@/types';
-import { api } from '@/lib/api';
+import { api, mapNarrative, mapPosition, mapPnLDataPoint, mapLiveStatus } from '@/lib/api';
 
 interface AppState {
   narratives: Narrative[];
@@ -45,7 +45,7 @@ export const useAppStore = create<AppState>()(
         set({ isLoading: true, error: null });
         try {
           const response = await api.getNarratives();
-          set({ narratives: response.items, isLoading: false });
+          set({ narratives: response ?? [], isLoading: false });
         } catch (error) {
           set({ error: 'Failed to fetch narratives', isLoading: false });
         }
@@ -55,7 +55,7 @@ export const useAppStore = create<AppState>()(
         set({ isLoading: true, error: null });
         try {
           const response = await api.getPositions();
-          set({ positions: response.items, isLoading: false });
+          set({ positions: response ?? [], isLoading: false });
         } catch (error) {
           set({ error: 'Failed to fetch positions', isLoading: false });
         }
@@ -92,25 +92,25 @@ export const useAppStore = create<AppState>()(
             const message = JSON.parse(event.data);
             switch (message.type) {
               case 'status':
-                set({ liveStatus: message.data });
+                set({ liveStatus: mapLiveStatus(message.data) });
                 break;
               case 'narrative_update':
                 set((state) => ({
                   narratives: state.narratives.map((n) =>
-                    n.id === message.data.id ? message.data : n
+                    n.id === message.data.id ? mapNarrative(message.data) : n
                   ),
                 }));
                 break;
               case 'position_update':
                 set((state) => ({
                   positions: state.positions.map((p) =>
-                    p.id === message.data.id ? message.data : p
+                    p.id === message.data.id ? mapPosition(message.data) : p
                   ),
                 }));
                 break;
               case 'pnl_update':
                 set((state) => ({
-                  pnlHistory: [...state.pnlHistory.slice(-100), message.data],
+                  pnlHistory: [...state.pnlHistory.slice(-100), mapPnLDataPoint(message.data)],
                 }));
                 break;
             }

@@ -54,7 +54,10 @@ export function NarrativeTable({ narratives, selectedId, onSelect, isLoading }: 
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {safeNarratives.map((narrative) => (
+              {safeNarratives.map((narrative) => {
+                const topTokens = narrative.topTokens ?? [];
+                const sources = narrative.sources ?? [];
+                return (
                 <tr
                   key={narrative.id}
                   onClick={() => onSelect(narrative.id)}
@@ -84,26 +87,27 @@ export function NarrativeTable({ narratives, selectedId, onSelect, isLoading }: 
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap gap-1">
-                      {narrative.topTokens.slice(0, 3).map((token, i) => (
+                      {topTokens.slice(0, 3).map((token, i) => (
                         <Badge key={i} variant="outline" size="sm">
                           {token}
                         </Badge>
                       ))}
-                      {narrative.topTokens.length > 3 && (
+                      {topTokens.length > 3 && (
                         <Badge variant="outline" size="sm">
-                          +{narrative.topTokens.length - 3}
+                          +{topTokens.length - 3}
                         </Badge>
                       )}
                     </div>
                   </td>
                   <td className="px-4 py-3 text-sm text-muted-foreground">
-                    {narrative.sources.length} sources
+                    {sources.length} sources
                   </td>
                   <td className="px-4 py-3 text-sm text-muted-foreground">
                     {formatTimestamp(narrative.updatedAt)}
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>

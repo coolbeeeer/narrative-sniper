@@ -102,7 +102,7 @@ export default function DashboardPage() {
                   </div>
                   <div>
                     <div className="text-xs text-muted-foreground">Active Narratives</div>
-                    <div className="font-mono text-xl font-semibold text-foreground">{narratives.length}</div>
+                    <div className="font-mono text-xl font-semibold text-foreground">{(narratives || []).length}</div>
                   </div>
                 </div>
               </CardContent>
@@ -125,7 +125,7 @@ export default function DashboardPage() {
                 </div>
               </CardHeader>
               <CardContent className="p-0">
-                <PnLChart data={pnlHistory} isLoading={isLoading} />
+                <PnLChart data={pnlHistory || []} isLoading={isLoading} />
               </CardContent>
             </Card>
 
@@ -133,7 +133,7 @@ export default function DashboardPage() {
               <Card variant="bordered">
                 <CardHeader>
                   <CardTitle>Narratives</CardTitle>
-                  <p className="text-sm text-muted-foreground mt-1">{narratives.length} detected</p>
+                  <p className="text-sm text-muted-foreground mt-1">{(narratives || []).length} detected</p>
                 </CardHeader>
         <CardContent className="p-0">
           <NarrativeTable 
