@@ -21,6 +21,7 @@ logger = structlog.get_logger()
 DEXSCREENER_URL = "https://api.dexscreener.com/tokens/v1/solana/{}"
 RUGCHECK_REPORT_URL = "https://api.rugcheck.xyz/v1/tokens/{}/report"
 RUGCHECK_NEW_TOKENS_URL = "https://api.rugcheck.xyz/v1/stats/new_tokens"
+PUMPFUN_COIN_URL = "https://frontend-api-v3.pump.fun/coins/{}"
 
 LEGACY_TOKEN_PROGRAM = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
 
@@ -70,6 +71,33 @@ async def _get_json(client: httpx.AsyncClient, url: str, timeout: float = 20.0) 
     except Exception as e:
         logger.debug("HTTP GET failed", url=url, error=str(e))
         return None
+
+
+async def pumpfun_mayhem_state(mint: str, client: Optional[httpx.AsyncClient] = None) -> Optional[str]:
+    """Return a pump.fun coin's Mayhem Mode state ('active' / 'paused' /
+    'completed'), or None for normal coins and for lookup failures.
+
+    Only pump.fun mints (they end in 'pump') are queried. pump.fun flags
+    Mayhem coins openly in its coin record; a normal coin's mayhem_state is
+    null. Failures return None (fail open) — callers that must not trade a
+    Mayhem coin still have the ingestion filter and the rest of the gate.
+    """
+    if not mint or not mint.endswith("pump"):
+        return None
+    own_client = client is None
+    if own_client:
+        client = httpx.AsyncClient()
+    assert client is not None
+    try:
+        data = await _get_json(client, PUMPFUN_COIN_URL.format(mint))
+        if isinstance(data, dict):
+            state = data.get("mayhem_state")
+            if isinstance(state, str) and state:
+                return state
+        return None
+    finally:
+        if own_client:
+            await client.aclose()
 
 
 async def _rpc(client: httpx.AsyncClient, method: str, params: list, tries: int = 2) -> Optional[dict]:
@@ -419,6 +447,27 @@ CACHE_TTL_SECONDS = 600
 
 async def safety_gate(mint: str) -> tuple[bool, dict]:
     """Returns (allowed, report). Blocks AVOID verdicts and scores over the limit."""
+    # Mayhem exclusion is an allowlist decision, not a risk judgement: a
+    # pump.fun Mayhem Mode coin is blocked outright when the switch is on,
+    # however it reached the gate (social chatter included).
+    if settings.EXCLUDE_MAYHEM_COINS:
+        state = await pumpfun_mayhem_state(mint)
+        if state:
+            return False, {
+                "mint": mint,
+                "name": "Unknown token",
+                "whitelisted": False,
+                "score": 100,
+                "verdict": "AVOID",
+                "block_reasons": [f"pump.fun Mayhem Mode coin ({state})"],
+                "findings": [("bad", f"pump.fun Mayhem Mode is {state} — Mayhem coins are excluded")],
+                "liquidity_usd": None,
+                "volume_h24_usd": None,
+                "holder_concentration_pct": None,
+                "dex_url": None,
+                "bottom_line": "pump.fun Mayhem Mode coin — excluded by your settings.",
+            }
+
     now = time.time()
     cached = _cache.get(mint)
     if cached and now - cached[0] < CACHE_TTL_SECONDS:

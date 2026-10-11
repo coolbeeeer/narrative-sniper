@@ -99,6 +99,10 @@ class Settings(BaseSettings):
     LAUNCHES_ENABLED: bool = True
     LAUNCHES_POLL_SECONDS: int = 60
     LAUNCHES_MAX_PER_POLL: int = 50
+    # pump.fun Mayhem Mode coins are excluded: dropped at launch ingestion
+    # and hard-blocked at the safety gate (their price action is driven by
+    # pump.fun's own trading agent, not a real crowd).
+    EXCLUDE_MAYHEM_COINS: bool = True
 
     # Volume watcher (catches silent buying: trading surges with no posts)
     VOLUME_ENABLED: bool = True

@@ -17,7 +17,7 @@ import httpx
 import structlog
 
 from app.core.config import settings
-from app.safety.checker import RUGCHECK_NEW_TOKENS_URL
+from app.safety.checker import RUGCHECK_NEW_TOKENS_URL, pumpfun_mayhem_state
 
 
 logger = structlog.get_logger()
@@ -32,6 +32,10 @@ class LaunchIngestion:
         self.task: Optional[asyncio.Task] = None
         self.seen: set[str] = set()
         self.seen_order: deque[str] = deque()
+        # Mayhem mints are remembered separately: deduped (never re-checked)
+        # but kept OUT of seen_order so the volume watcher never tracks them.
+        self.mayhem_mints: set[str] = set()
+        self.skipped_mayhem = 0
         self.received_count = 0
         self.poll_count = 0
         self.last_poll: Optional[datetime] = None
@@ -69,6 +73,7 @@ class LaunchIngestion:
             "enabled": settings.LAUNCHES_ENABLED,
             "running": self.running,
             "received_count": self.received_count,
+            "skipped_mayhem": self.skipped_mayhem,
             "poll_count": self.poll_count,
             "tracked_mints": len(self.seen),
             "last_poll": self.last_poll.isoformat() if self.last_poll else None,
@@ -100,7 +105,16 @@ class LaunchIngestion:
         fresh: list[dict] = []
         for item in items[: settings.LAUNCHES_MAX_PER_POLL]:
             mint = item.get("mint")
-            if not mint or mint in self.seen:
+            if not mint or mint in self.seen or mint in self.mayhem_mints:
+                continue
+            if settings.EXCLUDE_MAYHEM_COINS and await pumpfun_mayhem_state(mint, self._client):
+                # pump.fun Mayhem Mode coin: never emitted, never tracked —
+                # remembered only so it is not re-checked on later polls.
+                self.mayhem_mints.add(mint)
+                if len(self.mayhem_mints) > 5000:
+                    self.mayhem_mints.clear()
+                self.skipped_mayhem += 1
+                logger.info("Launch skipped: pump.fun Mayhem Mode coin", mint=mint)
                 continue
             self._remember(mint)
             fresh.append(item)
