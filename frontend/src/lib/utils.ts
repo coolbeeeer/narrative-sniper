@@ -43,13 +43,24 @@ export function shortenAddress(address: string): string {
   return `${address.slice(0, 4)}…${address.slice(-4)}`;
 }
 
-export function formatTimestamp(timestamp: string): string {  const date = new Date(timestamp);
+export function formatTimestamp(timestamp: string): string {
+  // Backend timestamps are UTC but carry no timezone marker; without this
+  // the browser would read them as local time and show the wrong hour.
+  const hasTz = /([zZ]|[+-]\d{2}:?\d{2})$/.test(timestamp.trim());
+  const date = new Date(hasTz ? timestamp : `${timestamp}Z`);
   return date.toLocaleString('en-US', {
     month: 'short',
     day: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
   });
+}
+
+/** Price display that survives tiny meme-coin prices ($0.00 is useless). */
+export function formatPrice(value: number): string {
+  if (!value) return '$0.00';
+  if (Math.abs(value) >= 0.01) return formatUsd(value);
+  return `$${parseFloat(value.toPrecision(4)).toString()}`;
 }
 
 export function getPnlColor(pnl: number): string {

@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils';
 import { Position } from '@/types';
 import { Badge } from '@/components/ui/Badge';
-import { formatUsd, formatPercent, formatShortNumber, formatTimestamp, getPnlColor, shortenAddress } from '@/lib/utils';
+import { formatUsd, formatPrice, formatPercent, formatShortNumber, formatTimestamp, getPnlColor, shortenAddress } from '@/lib/utils';
 
 interface PositionTableProps {
   positions: Position[];
@@ -84,15 +84,18 @@ export function PositionTable({ positions, selectedId, onSelect, isLoading }: Po
                         </a>
                       </div>
                     )}
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      Bought {formatTimestamp(position.entryTime)}
+                    </div>
                   </td>
                   <td className="px-4 py-3">
                     <Badge variant="outline" size="sm">{position.narrativeLabel}</Badge>
                   </td>
                   <td className="px-4 py-3 text-right font-mono text-sm text-foreground">
-                    {formatUsd(position.entryPrice)}
+                    {formatPrice(position.entryPrice)}
                   </td>
                   <td className="px-4 py-3 text-right font-mono text-sm text-foreground">
-                    {formatUsd(position.currentPrice)}
+                    {formatPrice(position.currentPrice)}
                   </td>
                   <td className="px-4 py-3 text-right font-mono text-sm text-muted-foreground">
                     {formatShortNumber(position.amount)}
@@ -152,15 +155,18 @@ export function PositionTable({ positions, selectedId, onSelect, isLoading }: Po
                         </a>
                       </div>
                     )}
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      Bought {formatTimestamp(position.entryTime)}
+                    </div>
                   </td>
                   <td className="px-4 py-3">
                     <Badge variant="outline" size="sm">{position.narrativeLabel}</Badge>
                   </td>
                   <td className="px-4 py-3 text-right font-mono text-sm text-foreground">
-                    {formatUsd(position.entryPrice)}
+                    {formatPrice(position.entryPrice)}
                   </td>
                   <td className="px-4 py-3 text-right font-mono text-sm text-foreground">
-                    {formatUsd(position.currentPrice)}
+                    {formatPrice(position.currentPrice)}
                   </td>
                   <td className="px-4 py-3 text-right font-mono text-sm text-muted-foreground">
                     {formatShortNumber(position.amount)}
