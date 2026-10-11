@@ -2,9 +2,15 @@
 
 The social pipeline only hears *talk*. A coin can be bought hard in silence —
 no posts, no comments — and the narrative engine would never know. This
-watcher polls DexScreener stats for the tokens the launch ingestion is
-already tracking (the newest launches, where silent pumps live) and raises
-a narrative when buying suddenly explodes:
+watcher polls DexScreener stats for two sets of tokens and raises a
+narrative when buying suddenly explodes:
+
+  1. the tokens launch ingestion is tracking (the newest launches, where
+     silent pumps are born), and
+  2. DexScreener's most-boosted Solana tokens — coins that are taking off
+     right now, whatever their age.
+
+A spike is:
 
   - buys in the last hour >= VOLUME_MIN_BUYS_H1, and
   - volume in the last hour >= VOLUME_MIN_VOLUME_H1_USD, and
@@ -14,7 +20,8 @@ a narrative when buying suddenly explodes:
 The alert is published through pipeline.emit_narrative, so it lands on the
 dashboard and goes through the signal engine's normal gates (price lookup,
 safety check, cooldowns) before any paper trade opens. A per-token cooldown
-stops one pumping coin from spamming alerts.
+stops one pumping coin from spamming alerts. pump.fun Mayhem Mode coins
+never alert (see EXCLUDE_MAYHEM_COINS).
 """
 import asyncio
 import uuid
@@ -26,10 +33,12 @@ import structlog
 
 from app.core.config import settings
 from app.models import Narrative, SourceRef
-from app.safety.checker import DEXSCREENER_URL
+from app.safety.checker import DEXSCREENER_URL, pumpfun_mayhem_state
 
 
 logger = structlog.get_logger()
+
+DEXSCREENER_BOOSTS_URL = "https://api.dexscreener.com/token-boosts/top/v1"
 
 
 def is_spike(prev_h1_volume: Optional[float], stats: dict) -> bool:
@@ -87,6 +96,7 @@ class VolumeWatcher:
         self._client: Optional[httpx.AsyncClient] = None
         self.last_volume_h1: dict[str, float] = {}   # mint -> previous h1 volume
         self.alerted_at: dict[str, datetime] = {}    # mint -> last alert time
+        self.boosted_mints: list[str] = []           # latest DexScreener top-boosted set
         self.poll_count = 0
         self.alert_count = 0
         self.last_poll: Optional[datetime] = None
@@ -122,6 +132,7 @@ class VolumeWatcher:
             "running": self.running,
             "poll_count": self.poll_count,
             "tokens_watched": len(self.last_volume_h1),
+            "boosted_watched": len(self.boosted_mints),
             "alerts_sent": self.alert_count,
             "last_poll": self.last_poll.isoformat() if self.last_poll else None,
             "last_error": self.last_error,
@@ -148,6 +159,13 @@ class VolumeWatcher:
 
         # Newest tracked launches first: silent pumps are a young-token game.
         mints = list(self.launches.seen_order)[-settings.VOLUME_WATCH_LIMIT:]
+        # Plus the coins taking off right now, of any age (DexScreener's
+        # most-boosted list), deduped against the launches.
+        if settings.VOLUME_BOOST_ENABLED:
+            self.boosted_mints = await self._fetch_boosted_mints()
+            for mint in self.boosted_mints:
+                if mint not in mints:
+                    mints.append(mint)
         for mint in mints:
             stats = await self._fetch_stats(mint)
             if stats is None:
@@ -155,7 +173,33 @@ class VolumeWatcher:
             prev = self.last_volume_h1.get(mint)
             self.last_volume_h1[mint] = stats["volume_h1"]
             if not self._in_cooldown(mint) and is_spike(prev, stats):
+                if settings.EXCLUDE_MAYHEM_COINS and await pumpfun_mayhem_state(mint, self._client):
+                    logger.info("Volume alert suppressed: pump.fun Mayhem Mode coin", mint=mint)
+                    continue
                 await self._alert(mint, stats)
+
+    async def _fetch_boosted_mints(self) -> list[str]:
+        """Solana mints from DexScreener's most-boosted list (top first)."""
+        try:
+            r = await self._client.get(
+                DEXSCREENER_BOOSTS_URL, timeout=15.0,
+                headers={"User-Agent": "narrative-sniper/1.0"},
+            )
+            r.raise_for_status()
+            entries = r.json() or []
+        except Exception as e:
+            logger.debug("Boosted tokens fetch failed", error=str(e))
+            return []
+        out: list[str] = []
+        for entry in entries:
+            if (entry.get("chainId") or "").lower() != "solana":
+                continue
+            mint = entry.get("tokenAddress")
+            if mint and mint not in out:
+                out.append(mint)
+            if len(out) >= settings.VOLUME_BOOST_LIMIT:
+                break
+        return out
 
     def _in_cooldown(self, mint: str) -> bool:
         last = self.alerted_at.get(mint)

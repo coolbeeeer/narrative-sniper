@@ -108,6 +108,8 @@ class Settings(BaseSettings):
     VOLUME_ENABLED: bool = True
     VOLUME_POLL_SECONDS: int = 60
     VOLUME_WATCH_LIMIT: int = 40          # newest tracked tokens checked per poll
+    VOLUME_BOOST_ENABLED: bool = True     # also watch DexScreener's most-boosted coins (taking off, any age)
+    VOLUME_BOOST_LIMIT: int = 30          # boosted tokens checked per poll
     VOLUME_MIN_BUYS_H1: int = 150         # buys in the last hour
     VOLUME_MIN_VOLUME_H1_USD: float = 10000.0
     VOLUME_SPIKE_MULTIPLE: float = 3.0    # h1 volume vs the previous reading
