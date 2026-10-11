@@ -4,7 +4,6 @@ from fastapi.middleware.cors import CORSMiddleware
 import structlog
 
 from app.core.config import settings
-from app.api import router as api_router
 from app.ingestion.manager import IngestionManager
 from app.ingestion.j7 import J7Ingestion
 from app.ingestion.launches import LaunchIngestion
@@ -146,8 +145,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(api_router, prefix="/api")
-
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
@@ -205,3 +202,10 @@ def get_launch_ingestion() -> LaunchIngestion:
     if launch_ingestion is None:
         raise RuntimeError("Launch ingestion not initialized")
     return launch_ingestion
+
+
+# Imported after the getter functions to avoid a circular import:
+# app.api imports the getters from this module.
+from app.api import router as api_router  # noqa: E402
+
+app.include_router(api_router, prefix="/api")

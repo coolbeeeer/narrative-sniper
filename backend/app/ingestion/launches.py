@@ -10,7 +10,7 @@ social chatter. The signal engine's safety gate still vets anything it trades.
 """
 import asyncio
 from collections import deque
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 import httpx

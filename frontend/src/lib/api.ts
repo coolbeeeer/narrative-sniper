@@ -85,5 +85,3 @@ class ApiClient {
 }
 
 export const api = new ApiClient();
-
-import { Narrative, Position, PnLDataPoint, LiveStatus, PaginatedResponse, AppConfig } from '@/types';

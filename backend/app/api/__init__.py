@@ -119,7 +119,7 @@ async def get_narratives(
     min_confidence: float = Query(0.0, ge=0.0, le=1.0),
     pipeline: IntelligencePipeline = Depends(get_intelligence_pipeline),
 ):
-    narratives = await pipeline.get_narratives(
+    narratives = pipeline.get_narratives(
         page=page, page_size=page_size, min_confidence=min_confidence
     )
     return narratives
@@ -130,7 +130,7 @@ async def get_narrative(
     narrative_id: str,
     pipeline: IntelligencePipeline = Depends(get_intelligence_pipeline),
 ):
-    narrative = await pipeline.get_narrative(narrative_id)
+    narrative = pipeline.get_narrative(narrative_id)
     if not narrative:
         raise HTTPException(status_code=404, detail="Narrative not found")
     return narrative

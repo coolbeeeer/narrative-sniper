@@ -47,7 +47,7 @@ export default function DashboardPage() {
     };
   }, [fetchNarratives, fetchPositions, fetchPnLHistory, fetchLiveStatus, connectWebSocket]);
 
-  const openPositions = positions.filter((p) => p.status === 'open');
+  const openPositions = (positions || []).filter((p) => p.status === 'open');
   const totalValue = openPositions.reduce((sum, p) => sum + p.valueUsd, 0);
   const totalPnl = openPositions.reduce((sum, p) => sum + p.pnlUsd, 0);
   const totalPnlPercent = totalValue > 0 ? (totalPnl / (totalValue - totalPnl)) * 100 : 0;
@@ -135,29 +135,29 @@ export default function DashboardPage() {
                   <CardTitle>Narratives</CardTitle>
                   <p className="text-sm text-muted-foreground mt-1">{narratives.length} detected</p>
                 </CardHeader>
-                <CardContent className="p-0">
-                  <NarrativeTable
-                    narratives={narratives}
-                    selectedId={selectedNarrativeId}
-                    onSelect={setSelectedNarrative}
-                    isLoading={isLoading}
-                  />
-                </CardContent>
+        <CardContent className="p-0">
+          <NarrativeTable 
+            narratives={narratives || []}
+            selectedId={selectedNarrativeId}
+            onSelect={setSelectedNarrative}
+            isLoading={isLoading}
+          />
+        </CardContent>
               </Card>
 
               <Card variant="bordered">
                 <CardHeader>
                   <CardTitle>Positions</CardTitle>
-                  <p className="text-sm text-muted-foreground mt-1">{openPositions.length} open, {positions.length - openPositions.length} closed</p>
+                  <p className="text-sm text-muted-foreground mt-1">{openPositions.length} open, {(positions || []).length - openPositions.length} closed</p>
                 </CardHeader>
-                <CardContent className="p-0">
-                  <PositionTable
-                    positions={positions}
-                    selectedId={selectedPositionId}
-                    onSelect={setSelectedPosition}
-                    isLoading={isLoading}
-                  />
-                </CardContent>
+        <CardContent className="p-0">
+          <PositionTable 
+            positions={positions || []}
+            selectedId={selectedPositionId}
+            onSelect={setSelectedPosition}
+            isLoading={isLoading}
+          />
+        </CardContent>
               </Card>
             </div>
           </div>

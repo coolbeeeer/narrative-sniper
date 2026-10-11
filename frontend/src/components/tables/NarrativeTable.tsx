@@ -26,7 +26,8 @@ export function NarrativeTable({ narratives, selectedId, onSelect, isLoading }: 
     );
   }
 
-  if (narratives.length === 0) {
+  const safeNarratives = narratives || [];
+  if (safeNarratives.length === 0) {
     return (
       <Card>
         <CardContent className="p-8 text-center">
@@ -53,7 +54,7 @@ export function NarrativeTable({ narratives, selectedId, onSelect, isLoading }: 
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {narratives.map((narrative) => (
+              {safeNarratives.map((narrative) => (
                 <tr
                   key={narrative.id}
                   onClick={() => onSelect(narrative.id)}

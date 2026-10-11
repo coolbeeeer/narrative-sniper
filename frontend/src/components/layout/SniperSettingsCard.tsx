@@ -145,18 +145,17 @@ export function SniperSettingsCard() {
           <p className="text-sm text-muted-foreground">Loading settings…</p>
         )}
         {config &&
-          NUM_FIELDS.map(({ key, label, step, min, helper }) => (
-            <Input
-              key={key}
-              label={label}
-              type="number"
-              step={step}
-              min={min}
-              helperText={helper}
-              value={draft[key] ?? String(config[key])}
-              onChange={(e) => setDraftValue(key, (e.target as HTMLInputElement).value)}
-            />
-          ))}
+                  NUM_FIELDS.map(({ key, label, step, min, helper }) => (
+                    <Input
+                      key={key}
+                      label={label}
+                      step={step}
+                      min={min}
+                      helperText={helper}
+                      value={draft[key] ?? String(config[key])}
+                      onChange={(e) => setDraftValue(key, (e.target as HTMLInputElement).value)}
+                    />
+                  ))}
         {config && (
           <>
             <div className="flex items-center gap-2 pt-1">

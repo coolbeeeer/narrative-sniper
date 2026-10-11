@@ -26,7 +26,8 @@ export function PositionTable({ positions, selectedId, onSelect, isLoading }: Po
     );
   }
 
-  if (positions.length === 0) {
+  const safePositions = positions || [];
+  if (safePositions.length === 0) {
     return (
       <Card>
         <CardContent className="p-8 text-center">
@@ -37,7 +38,7 @@ export function PositionTable({ positions, selectedId, onSelect, isLoading }: Po
     );
   }
 
-  const openPositions = positions.filter((p) => p.status === 'open');
+  const openPositions = safePositions.filter((p) => p.status === 'open');
   const closedPositions = positions.filter((p) => p.status === 'closed');
 
   return (
@@ -59,7 +60,7 @@ export function PositionTable({ positions, selectedId, onSelect, isLoading }: Po
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {openPositions.map((position) => (
+              {safePositions.map((position) => (
                 <tr
                   key={position.id}
                   onClick={() => onSelect(position.id)}
