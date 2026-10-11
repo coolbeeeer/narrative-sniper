@@ -62,6 +62,7 @@ class PositionResponse(BaseModel):
     narrative_id: str
     narrative_label: str
     entry_time: datetime
+    entry_market_cap: Optional[float] = None
     status: str
     tx_signature: Optional[str] = None
 

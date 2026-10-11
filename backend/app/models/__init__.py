@@ -69,6 +69,8 @@ class Position(BaseModel):
     narrative_id: str
     narrative_label: str
     entry_time: datetime = Field(default_factory=datetime.utcnow)
+    # Market cap of the coin at the moment this position was opened.
+    entry_market_cap: Optional[float] = None
     status: str = "open"  # open, closed, partial
     tx_signature: Optional[str] = None
     exit_price: Optional[float] = None

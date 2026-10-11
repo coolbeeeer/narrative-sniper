@@ -92,3 +92,29 @@ def test_success_records_traded(monkeypatch):
     assert "Bought" in n.trade_reason
     assert len(paper.opened) == 1
     assert paper.opened[0]["token_address"] == "MintFOMO111"
+
+
+def test_success_records_entry_market_cap(monkeypatch):
+    eng, paper = _engine(monkeypatch)
+
+    async def fake_mc(address):
+        return 424_242.0
+
+    eng.prices.market_cap_by_address = fake_mc
+    n = _narrative()
+    asyncio.run(eng.evaluate(n))
+    assert n.trade_status == "traded"
+    assert paper.opened[0]["entry_market_cap"] == 424_242.0
+    assert "$424,242 market cap" in n.trade_reason
+
+
+def test_entry_market_cap_falls_back_to_caught(monkeypatch):
+    eng, paper = _engine(monkeypatch)
+
+    async def no_mc(address):
+        return None
+
+    eng.prices.market_cap_by_address = no_mc
+    n = _narrative(caught_market_cap=9_900.0)
+    asyncio.run(eng.evaluate(n))
+    assert paper.opened[0]["entry_market_cap"] == 9_900.0

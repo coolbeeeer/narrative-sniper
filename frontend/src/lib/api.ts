@@ -54,6 +54,7 @@ export function mapPosition(raw: Raw): Position {
     narrativeId: pick(raw, 'narrativeId', 'narrative_id') ?? '',
     narrativeLabel: pick(raw, 'narrativeLabel', 'narrative_label') ?? '',
     entryTime: pick(raw, 'entryTime', 'entry_time') ?? '',
+    entryMarketCap: pick(raw, 'entryMarketCap', 'entry_market_cap') ?? null,
     status: raw?.status ?? 'open',
     txSignature: pick(raw, 'txSignature', 'tx_signature'),
   };

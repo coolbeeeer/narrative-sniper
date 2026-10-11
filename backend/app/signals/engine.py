@@ -175,6 +175,15 @@ class SignalEngine:
             self._decide(narrative, False, "The trade size worked out to nothing at this price.")
             return
 
+        # Market cap at the moment of the buy: from the quote when the
+        # symbol lookup carried it, else a direct lookup for the mint,
+        # else what the volume watcher recorded when it caught the coin.
+        entry_market_cap = quote.get("market_cap")
+        if not entry_market_cap:
+            entry_market_cap = await self.prices.market_cap_by_address(quote["address"])
+        if not entry_market_cap:
+            entry_market_cap = getattr(narrative, "caught_market_cap", None)
+
         try:
             position = await self.paper_trading.open_position(
                 token_address=quote["address"],
@@ -184,6 +193,7 @@ class SignalEngine:
                 amount=amount,
                 narrative_id=narrative.id,
                 narrative_label=narrative.label,
+                entry_market_cap=float(entry_market_cap) if entry_market_cap else None,
             )
         except ValueError as e:
             logger.warning("Signal rejected by risk limits", symbol=symbol, error=str(e))
@@ -191,10 +201,14 @@ class SignalEngine:
             return
 
         self.last_trade_at[symbol] = datetime.utcnow()
-        self._decide(
-            narrative, True,
-            f"Bought ${size_usd:,.0f} worth at ${price:g} — see it under Trades.",
-        )
+        if entry_market_cap:
+            reason = (
+                f"Bought ${size_usd:,.0f} worth at ${price:g}, "
+                f"at a ${entry_market_cap:,.0f} market cap — see it under Trades."
+            )
+        else:
+            reason = f"Bought ${size_usd:,.0f} worth at ${price:g} — see it under Trades."
+        self._decide(narrative, True, reason)
         await self._emit({
             "type": "trade_opened",
             "symbol": quote["symbol"],

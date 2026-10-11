@@ -62,6 +62,7 @@ class PriceLookup:
             "symbol": base.get("symbol", symbol).upper(),
             "name": base.get("name", symbol),
             "liquidity_usd": float(best.get("liquidity", {}).get("usd") or 0),
+            "market_cap": best.get("marketCap") or best.get("fdv"),
         }
         self._store(f"sym:{symbol.upper()}", price, meta)
         if meta["address"]:
@@ -92,5 +93,21 @@ class PriceLookup:
             return None
         if price <= 0:
             return None
-        self._store(f"addr:{address}", price, {})
+        best = sol_pairs[0]
+        self._store(f"addr:{address}", price, {
+            "market_cap": best.get("marketCap") or best.get("fdv"),
+        })
         return price
+
+    async def market_cap_by_address(self, address: str) -> Optional[float]:
+        """Market cap for a mint, from the same DexScreener pair data the
+        price lookup already fetches (cached, so usually free)."""
+        cached = self._cached(f"addr:{address}")
+        if cached and cached[1].get("market_cap"):
+            return float(cached[1]["market_cap"])
+        if await self.price_by_address(address) is None:
+            return None
+        cached = self._cached(f"addr:{address}")
+        if cached and cached[1].get("market_cap"):
+            return float(cached[1]["market_cap"])
+        return None

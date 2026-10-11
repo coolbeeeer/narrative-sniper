@@ -87,6 +87,11 @@ export function PositionTable({ positions, selectedId, onSelect, isLoading }: Po
                     <div className="text-xs text-muted-foreground mt-0.5">
                       Bought {formatTimestamp(position.entryTime)}
                     </div>
+                    {position.entryMarketCap ? (
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        at <span className="font-medium text-foreground">{formatUsd(position.entryMarketCap)}</span> market cap
+                      </div>
+                    ) : null}
                   </td>
                   <td className="px-4 py-3">
                     <Badge variant="outline" size="sm">{position.narrativeLabel}</Badge>
@@ -158,6 +163,11 @@ export function PositionTable({ positions, selectedId, onSelect, isLoading }: Po
                     <div className="text-xs text-muted-foreground mt-0.5">
                       Bought {formatTimestamp(position.entryTime)}
                     </div>
+                    {position.entryMarketCap ? (
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        at <span className="font-medium text-foreground">{formatUsd(position.entryMarketCap)}</span> market cap
+                      </div>
+                    ) : null}
                   </td>
                   <td className="px-4 py-3">
                     <Badge variant="outline" size="sm">{position.narrativeLabel}</Badge>

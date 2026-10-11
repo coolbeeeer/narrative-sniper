@@ -89,7 +89,7 @@ export function NarrativeTable({ narratives, selectedId, onSelect, isLoading }: 
                     )}
                     {narrative.caughtMarketCap ? (
                       <div className="text-xs text-muted-foreground mt-0.5">
-                        Caught at <span className="font-medium text-foreground">{formatUsd(narrative.caughtMarketCap)}</span> market cap
+                        Caught {formatTimestamp(narrative.createdAt)} at <span className="font-medium text-foreground">{formatUsd(narrative.caughtMarketCap)}</span> market cap
                       </div>
                     ) : null}
                     {narrative.tradeStatus === 'traded' ? (

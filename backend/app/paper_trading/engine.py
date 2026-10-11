@@ -118,6 +118,7 @@ class PaperTradingEngine:
         amount: float,
         narrative_id: str,
         narrative_label: str,
+        entry_market_cap: Optional[float] = None,
     ) -> Position:
         cost = amount * entry_price
         
@@ -143,6 +144,7 @@ class PaperTradingEngine:
             narrative_id=narrative_id,
             narrative_label=narrative_label,
             entry_time=datetime.utcnow(),
+            entry_market_cap=entry_market_cap,
             status="open",
         )
 

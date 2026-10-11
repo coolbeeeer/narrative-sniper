@@ -38,6 +38,7 @@ export interface Position {
   narrativeId: string;
   narrativeLabel: string;
   entryTime: string;
+  entryMarketCap?: number | null;
   status: 'open' | 'closed' | 'partial';
   txSignature?: string;
 }
