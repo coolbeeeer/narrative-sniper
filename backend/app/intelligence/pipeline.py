@@ -32,6 +32,26 @@ class IntelligencePipeline:
         """Register an async callback invoked with each new Narrative."""
         self.narrative_listeners.append(callback)
 
+    async def emit_narrative(self, narrative: Narrative):
+        """Publish a ready-made narrative (e.g. from the volume watcher).
+
+        Stores it alongside cluster-born narratives and notifies the same
+        listeners, so it appears on the dashboard and reaches the signal
+        engine exactly like a narrative born from social chatter.
+        """
+        self.narratives[narrative.id] = narrative
+        logger.info(
+            "Narrative emitted",
+            label=narrative.label,
+            confidence=narrative.confidence,
+            size=narrative.cluster_size,
+        )
+        for listener in self.narrative_listeners:
+            try:
+                await listener(narrative)
+            except Exception as e:
+                logger.warning("Narrative listener failed", error=str(e))
+
     async def initialize(self):
         logger.info("Initializing intelligence pipeline")
         

@@ -100,6 +100,15 @@ class Settings(BaseSettings):
     LAUNCHES_POLL_SECONDS: int = 60
     LAUNCHES_MAX_PER_POLL: int = 50
 
+    # Volume watcher (catches silent buying: trading surges with no posts)
+    VOLUME_ENABLED: bool = True
+    VOLUME_POLL_SECONDS: int = 60
+    VOLUME_WATCH_LIMIT: int = 40          # newest tracked tokens checked per poll
+    VOLUME_MIN_BUYS_H1: int = 150         # buys in the last hour
+    VOLUME_MIN_VOLUME_H1_USD: float = 25000.0
+    VOLUME_SPIKE_MULTIPLE: float = 3.0    # h1 volume vs the previous reading
+    VOLUME_COOLDOWN_HOURS: int = 6        # per-token silence after an alert
+
     # Token safety gate (pre-trade rug checks, ported from RugRadar)
     SAFETY_ENABLED: bool = True
     SAFETY_MAX_RISK_SCORE: int = 60          # AVOID / scores above this are blocked

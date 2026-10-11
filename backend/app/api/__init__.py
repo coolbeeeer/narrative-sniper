@@ -10,6 +10,7 @@ from app.main import (
     get_execution_engine,
     get_paper_trading_engine,
     get_launch_ingestion,
+    get_volume_watcher,
 )
 from app.ingestion.manager import IngestionManager
 from app.intelligence.pipeline import IntelligencePipeline
@@ -82,6 +83,14 @@ class LaunchStatusResponse(BaseModel):
     last_poll: Optional[str] = None
     launches_seen: int
     launches_emitted: int
+
+
+class VolumeStatusResponse(BaseModel):
+    enabled: bool
+    running: bool
+    tokens_watched: int
+    alerts_sent: int
+    last_poll: Optional[str] = None
 
 
 class ConfigResponse(BaseModel):
@@ -203,6 +212,21 @@ async def get_launches_status():
         )
     except RuntimeError:
         return LaunchStatusResponse(enabled=False, running=False, launches_seen=0, launches_emitted=0)
+
+
+@router.get("/volume/status", response_model=VolumeStatusResponse)
+async def get_volume_status():
+    try:
+        st = get_volume_watcher().get_status()
+        return VolumeStatusResponse(
+            enabled=st["enabled"],
+            running=st["running"],
+            tokens_watched=st["tokens_watched"],
+            alerts_sent=st["alerts_sent"],
+            last_poll=st.get("last_poll"),
+        )
+    except RuntimeError:
+        return VolumeStatusResponse(enabled=False, running=False, tokens_watched=0, alerts_sent=0)
 
 
 @router.get("/config", response_model=ConfigResponse)

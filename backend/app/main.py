@@ -7,6 +7,7 @@ from app.core.config import settings
 from app.ingestion.manager import IngestionManager
 from app.ingestion.j7 import J7Ingestion
 from app.ingestion.launches import LaunchIngestion
+from app.ingestion.volume import VolumeWatcher
 from app.intelligence.pipeline import IntelligencePipeline
 from app.execution.engine import ExecutionEngine
 from app.paper_trading.engine import PaperTradingEngine
@@ -45,6 +46,7 @@ paper_trading_engine: PaperTradingEngine | None = None
 signal_engine: SignalEngine | None = None
 j7_ingestion: J7Ingestion | None = None
 launch_ingestion: LaunchIngestion | None = None
+volume_watcher: VolumeWatcher | None = None
 
 
 async def _broadcast_event(event: dict):
@@ -53,7 +55,7 @@ async def _broadcast_event(event: dict):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global ingestion_manager, intelligence_pipeline, execution_engine, paper_trading_engine, signal_engine, j7_ingestion, launch_ingestion, launch_ingestion, launch_ingestion
+    global ingestion_manager, intelligence_pipeline, execution_engine, paper_trading_engine, signal_engine, j7_ingestion, launch_ingestion, volume_watcher
 
     logger.info("Starting Narrative Sniper backend")
 
@@ -89,19 +91,10 @@ async def lifespan(app: FastAPI):
     launch_ingestion = LaunchIngestion(intelligence_pipeline)
     await launch_ingestion.start()
 
-    # New-launch ingestion: fresh tokens from RugCheck + DexScreener feed the
-    # pipeline with exact mints so the signal engine never guesses by symbol.
-    launch_ingestion = LaunchIngestion(intelligence_pipeline)
-    await launch_ingestion.start()
-
-    # New-launch ingestion: fresh tokens from RugCheck + DexScreener feed the
-    # pipeline with exact mints so the signal engine never guesses by symbol.
-    launch_ingestion = LaunchIngestion(intelligence_pipeline)
-    await launch_ingestion.start()
-
-
-
-
+    # Volume watcher: catches silent buying surges on the tracked launches
+    # (trading activity with no social posts behind it).
+    volume_watcher = VolumeWatcher(intelligence_pipeline, launch_ingestion)
+    await volume_watcher.start()
 
     logger.info("All components initialized")
 
@@ -111,6 +104,9 @@ async def lifespan(app: FastAPI):
 
     if j7_ingestion:
         await j7_ingestion.stop()
+
+    if volume_watcher:
+        await volume_watcher.stop()
 
     if launch_ingestion:
         await launch_ingestion.stop()
@@ -202,6 +198,12 @@ def get_launch_ingestion() -> LaunchIngestion:
     if launch_ingestion is None:
         raise RuntimeError("Launch ingestion not initialized")
     return launch_ingestion
+
+
+def get_volume_watcher() -> VolumeWatcher:
+    if volume_watcher is None:
+        raise RuntimeError("Volume watcher not initialized")
+    return volume_watcher
 
 
 # Imported after the getter functions to avoid a circular import:
