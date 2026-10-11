@@ -8,9 +8,9 @@ export interface CardProps extends HTMLAttributes<HTMLDivElement> {
 export const Card = forwardRef<HTMLDivElement, CardProps>(
   ({ className, variant = 'default', children, ...props }, ref) => {
     const variants = {
-      default: 'bg-card text-card-foreground shadow-sm',
-      bordered: 'bg-card text-card-foreground border border-border',
-      elevated: 'bg-card text-card-foreground shadow-lg',
+      default: 'bg-card text-card-foreground shadow-md shadow-black/40',
+      bordered: 'bg-card text-card-foreground border border-border shadow-md shadow-black/40',
+      elevated: 'bg-card text-card-foreground border border-border shadow-xl shadow-black/50',
     };
 
     return (

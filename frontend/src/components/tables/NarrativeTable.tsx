@@ -1,8 +1,7 @@
 import { cn } from '@/lib/utils';
 import { Narrative } from '@/types';
 import { Badge } from '@/components/ui/Badge';
-import { Card, CardContent } from '@/components/ui/Card';
-import { formatUsd, formatNumber, formatShortNumber, formatTimestamp, getPnlColor, shortenAddress } from '@/lib/utils';
+import { formatNumber, formatTimestamp, shortenAddress } from '@/lib/utils';
 
 interface NarrativeTableProps {
   narratives: Narrative[];
@@ -14,37 +13,31 @@ interface NarrativeTableProps {
 export function NarrativeTable({ narratives, selectedId, onSelect, isLoading }: NarrativeTableProps) {
   if (isLoading) {
     return (
-      <Card>
-        <CardContent className="p-6">
-          <div className="space-y-4" role="status" aria-label="Loading narratives">
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="h-16 animate-pulse bg-slate-100 dark:bg-slate-800 rounded-lg" />
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      <div className="p-6">
+        <div className="space-y-4" role="status" aria-label="Loading narratives">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="h-16 animate-pulse bg-muted rounded-lg" />
+          ))}
+        </div>
+      </div>
     );
   }
 
   const safeNarratives = narratives || [];
   if (safeNarratives.length === 0) {
     return (
-      <Card>
-        <CardContent className="p-8 text-center">
-          <p className="text-muted-foreground">No stories found yet</p>
-          <p className="text-sm text-muted-foreground/70 mt-1">The sniper is listening. A story appears here when a crowd starts talking about the same coin at the same time.</p>
-        </CardContent>
-      </Card>
+      <div className="p-8 text-center">
+        <p className="text-muted-foreground">No stories found yet</p>
+        <p className="text-sm text-muted-foreground/70 mt-1">The sniper is listening. A story appears here when a crowd starts talking about the same coin at the same time.</p>
+      </div>
     );
   }
 
   return (
-    <Card variant="bordered">
-      <CardContent className="p-0">
-        <div className="overflow-x-auto">
-          <table className="w-full" role="table">
+    <div className="overflow-x-auto">
+          <table className="w-full min-w-[760px]" role="table">
             <thead>
-              <tr className="border-b border-border bg-slate-50 dark:bg-slate-900/50">
+              <tr className="border-b border-border bg-muted/60">
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Story</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">How sure</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">People talking</th>
@@ -63,8 +56,8 @@ export function NarrativeTable({ narratives, selectedId, onSelect, isLoading }: 
                   onClick={() => onSelect(narrative.id)}
                   className={cn(
                     'cursor-pointer transition-colors duration-150',
-                    'hover:bg-slate-50 dark:hover:bg-slate-800/50',
-                    selectedId === narrative.id && 'bg-copper-50 dark:bg-copper-900/20'
+                    'hover:bg-muted/50',
+                    selectedId === narrative.id && 'bg-copper-500/10'
                   )}
                   tabIndex={0}
                   onKeyDown={(e) => e.key === 'Enter' && onSelect(narrative.id)}
@@ -72,7 +65,7 @@ export function NarrativeTable({ narratives, selectedId, onSelect, isLoading }: 
                 >
                   <td className="px-4 py-3">
                     <div className="font-medium text-foreground">{narrative.label}</div>
-                    <div className="text-sm text-muted-foreground truncate max-w-xs">
+                    <div className="text-sm text-muted-foreground leading-snug">
                       {sources.some((s) => s.platform === 'dexscreener')
                         ? `${narrative.clusterSize} buys in the last hour`
                         : `${narrative.clusterSize} posts${topTokens.length > 0 ? ` talking about ${topTokens.slice(0, 3).join(', ')}` : ' in this story'}`}
@@ -86,7 +79,7 @@ export function NarrativeTable({ narratives, selectedId, onSelect, isLoading }: 
                           rel="noreferrer"
                           title={narrative.tokenMint}
                           onClick={(e) => e.stopPropagation()}
-                          className="font-mono text-copper-600 hover:underline"
+                          className="font-mono text-copper-400 hover:underline"
                         >
                           {shortenAddress(narrative.tokenMint)}
                         </a>
@@ -99,7 +92,7 @@ export function NarrativeTable({ narratives, selectedId, onSelect, isLoading }: 
                         Traded ✓ {narrative.tradeReason}
                       </div>
                     ) : narrative.tradeStatus === 'not_traded' ? (
-                      <div className="text-xs text-amber-600 dark:text-amber-400 mt-1 max-w-xs" title={narrative.tradeReason ?? undefined}>
+                      <div className="text-xs text-amber-600 dark:text-amber-400 mt-1 leading-snug" title={narrative.tradeReason ?? undefined}>
                         Not traded: {narrative.tradeReason}
                       </div>
                     ) : (
@@ -142,8 +135,6 @@ export function NarrativeTable({ narratives, selectedId, onSelect, isLoading }: 
               })}
             </tbody>
           </table>
-        </div>
-      </CardContent>
-    </Card>
+    </div>
   );
 }

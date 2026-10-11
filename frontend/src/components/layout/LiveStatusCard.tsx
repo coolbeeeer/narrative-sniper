@@ -24,9 +24,9 @@ export function LiveStatusCard({ status, isLoading }: LiveStatusProps) {
       <Card>
         <CardContent className="p-4">
           <div className="flex items-center gap-4">
-            <div className="w-3 h-3 rounded-full bg-slate-200 dark:bg-slate-700 animate-pulse" />
+            <div className="w-3 h-3 rounded-full bg-muted animate-pulse" />
             <div className="flex-1">
-              <div className="h-4 w-1/4 bg-slate-200 dark:bg-slate-700 animate-pulse rounded" />
+              <div className="h-4 w-1/4 bg-muted animate-pulse rounded" />
             </div>
           </div>
         </CardContent>
@@ -55,7 +55,7 @@ export function LiveStatusCard({ status, isLoading }: LiveStatusProps) {
         </div>
         <div className="grid grid-cols-2 gap-3">
           {statusItems.map((item) => (
-            <div key={item.key} className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+            <div key={item.key} className="p-3 bg-muted/60 rounded-lg">
               <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
                 {item.label}
               </div>

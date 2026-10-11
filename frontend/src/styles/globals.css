@@ -2,49 +2,59 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Narrative Sniper — dark trading-desk theme (default and only theme).
+ * Palette contract:
+ *   background  deep charcoal blue-black, cards lifted one clear step above it
+ *   border      visible steel edge (never below ~20% lightness on dark)
+ *   foreground  near-white; muted-foreground holds >= 7:1 contrast on card
+ *   primary     copper/orange, brightened one step so it pops on charcoal
+ */
 :root {
-  --foreground: 222.2 84% 4.9%;
-  --background: 0 0% 100%;
-  --muted: 210 40% 96.1%;
-  --muted-foreground: 215.4 16.3% 46.9%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 222.2 84% 4.9%;
-  --card: 0 0% 100%;
-  --card-foreground: 222.2 84% 4.9%;
-  --border: 214.3 31.8% 91.4%;
-  --input: 214.3 31.8% 91.4%;
-  --primary: 24 95% 53%;
-  --primary-foreground: 210 40% 98%;
-  --secondary: 210 40% 96.1%;
-  --secondary-foreground: 222.2 47.4% 11.2%;
-  --accent: 210 40% 96.1%;
-  --accent-foreground: 222.2 47.4% 11.2%;
-  --destructive: 0 84.2% 60.2%;
+  --background: 222 47% 5%;
+  --foreground: 210 40% 96%;
+  --muted: 217 33% 14%;
+  --muted-foreground: 215 20% 68%;
+  --popover: 222 36% 10%;
+  --popover-foreground: 210 40% 96%;
+  --card: 222 36% 9%;
+  --card-foreground: 210 40% 96%;
+  --border: 217 28% 22%;
+  --input: 217 28% 26%;
+  --primary: 24 96% 56%;
+  --primary-foreground: 222 47% 8%;
+  --secondary: 217 33% 15%;
+  --secondary-foreground: 210 40% 96%;
+  --accent: 217 33% 16%;
+  --accent-foreground: 210 40% 96%;
+  --destructive: 0 72% 55%;
   --destructive-foreground: 210 40% 98%;
-  --ring: 24 95% 53%;
+  --ring: 24 96% 56%;
   --radius: 0.5rem;
+  color-scheme: dark;
 }
 
 .dark {
-  --foreground: 210 40% 98%;
-  --background: 222.2 84% 4.9%;
-  --muted: 217.2 32.6% 17.5%;
-  --muted-foreground: 215 20.2% 65.1%;
-  --popover: 222.2 84% 4.9%;
-  --popover-foreground: 210 40% 98%;
-  --card: 222.2 84% 4.9%;
-  --card-foreground: 210 40% 98%;
-  --border: 217.2 32.6% 17.5%;
-  --input: 217.2 32.6% 17.5%;
-  --primary: 24 95% 53%;
-  --primary-foreground: 222.2 47.4% 11.2%;
-  --secondary: 217.2 32.6% 17.5%;
-  --secondary-foreground: 210 40% 98%;
-  --accent: 217.2 32.6% 17.5%;
-  --accent-foreground: 210 40% 98%;
-  --destructive: 0 62.8% 30.6%;
+  --background: 222 47% 5%;
+  --foreground: 210 40% 96%;
+  --muted: 217 33% 14%;
+  --muted-foreground: 215 20% 68%;
+  --popover: 222 36% 10%;
+  --popover-foreground: 210 40% 96%;
+  --card: 222 36% 9%;
+  --card-foreground: 210 40% 96%;
+  --border: 217 28% 22%;
+  --input: 217 28% 26%;
+  --primary: 24 96% 56%;
+  --primary-foreground: 222 47% 8%;
+  --secondary: 217 33% 15%;
+  --secondary-foreground: 210 40% 96%;
+  --accent: 217 33% 16%;
+  --accent-foreground: 210 40% 96%;
+  --destructive: 0 72% 55%;
   --destructive-foreground: 210 40% 98%;
-  --ring: 24 95% 53%;
+  --ring: 24 96% 56%;
+  color-scheme: dark;
 }
 
 * {
@@ -55,6 +65,11 @@ body {
   color: hsl(var(--foreground));
   background: hsl(var(--background));
   font-family: 'Geist', system-ui, sans-serif;
+}
+
+::selection {
+  background: hsl(var(--primary) / 0.35);
+  color: hsl(var(--foreground));
 }
 
 @layer utilities {

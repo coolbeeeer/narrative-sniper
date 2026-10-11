@@ -154,7 +154,7 @@ export function SniperSettingsCard() {
           <p className="text-sm text-muted-foreground">Loading settings…</p>
         )}
         {config && (
-          <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 p-3 text-sm leading-relaxed text-foreground">
+          <div className="rounded-lg bg-muted/60 p-3 text-sm leading-relaxed text-foreground">
             <span className="font-semibold">In plain words: </span>
             I watch for a coin that at least {eff('signal_min_cluster_size')} people are
             talking about at once. When I am at least{' '}

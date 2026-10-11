@@ -58,7 +58,7 @@ export function PnLChart({ data, isLoading }: PnLChartProps) {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Total worth right now</CardTitle>
-        <div className={cn('font-mono text-sm font-medium', totalChange >= 0 ? 'text-green-600' : 'text-red-600')}>
+        <div className={cn('font-mono text-sm font-medium', totalChange >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400')}>
           {formatValue(latest.totalValue)}
           <span className="ml-2 text-xs">
             {totalChange >= 0 ? '+' : ''}{formatValue(totalChange)} ({totalChangePercent}%)
@@ -136,10 +136,10 @@ export function PnLChart({ data, isLoading }: PnLChartProps) {
             </span>
           </div>
           <div className="flex items-center gap-4 text-sm">
-            <span className="text-green-600 font-mono">
+            <span className="text-green-600 dark:text-green-400 font-mono">
               Banked profit: {latest.realizedPnl >= 0 ? '+' : ''}{formatValue(latest.realizedPnl)}
             </span>
-            <span className={cn('font-mono', latest.unrealizedPnl >= 0 ? 'text-green-600' : 'text-red-600')}>
+            <span className={cn('font-mono', latest.unrealizedPnl >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400')}>
               Open profit: {latest.unrealizedPnl >= 0 ? '+' : ''}{formatValue(latest.unrealizedPnl)}
             </span>
           </div>

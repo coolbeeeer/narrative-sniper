@@ -87,9 +87,9 @@ export default function DashboardPage() {
           </div>
         )}
 
-        <div className="rounded-lg border border-border bg-slate-50 dark:bg-slate-800/50 px-4 py-3">
+        <div className="rounded-lg border border-border bg-card px-4 py-3 shadow-md shadow-black/40">
           <p className="text-sm text-foreground">
-            <span className="font-semibold">Right now: </span>
+            <span className="font-semibold text-copper-400">Right now: </span>
             {statusMessage}
           </p>
         </div>
@@ -109,7 +109,7 @@ export default function DashboardPage() {
                 </div>
                 <div>
                   <div className="text-sm text-muted-foreground">Profit so far (trades still open)</div>
-                  <div className={`text-2xl font-bold font-mono ${totalPnl >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  <div className={`text-2xl font-bold font-mono ${totalPnl >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                     {totalPnl >= 0 ? '+' : ''}{formatUsd(totalPnl)} ({totalPnlPercent >= 0 ? '+' : ''}{formatPercent(totalPnlPercent)})
                   </div>
                 </div>
@@ -132,7 +132,7 @@ export default function DashboardPage() {
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>How the money is doing over time</CardTitle>
                 <div className="flex items-center gap-2">
-                  <Badge variant="outline" size="sm" className={!selectedNarrativeId ? 'bg-copper-50' : ''}>
+                  <Badge variant="outline" size="sm" className={!selectedNarrativeId ? 'bg-copper-500/15' : ''}>
                     All stories
                   </Badge>
                   {selectedNarrativeId && (
@@ -147,37 +147,35 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card variant="bordered">
-                <CardHeader>
-                  <CardTitle>Stories the sniper found</CardTitle>
-                  <p className="text-sm text-muted-foreground mt-1">{(narratives || []).length} found</p>
-                </CardHeader>
-        <CardContent className="p-0">
-          <NarrativeTable 
-            narratives={narratives || []}
-            selectedId={selectedNarrativeId}
-            onSelect={setSelectedNarrative}
-            isLoading={isLoading}
-          />
-        </CardContent>
-              </Card>
+            <Card variant="bordered">
+              <CardHeader>
+                <CardTitle>Stories the sniper found</CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">{(narratives || []).length} found</p>
+              </CardHeader>
+              <CardContent className="p-0">
+                <NarrativeTable
+                  narratives={narratives || []}
+                  selectedId={selectedNarrativeId}
+                  onSelect={setSelectedNarrative}
+                  isLoading={isLoading}
+                />
+              </CardContent>
+            </Card>
 
-              <Card variant="bordered">
-                <CardHeader>
-                  <CardTitle>Trades</CardTitle>
-                  <p className="text-sm text-muted-foreground mt-1">{openPositions.length} open, {(positions || []).length - openPositions.length} finished</p>
-                </CardHeader>
-        <CardContent className="p-0">
-          <PositionTable 
-            positions={positions || []}
-            selectedId={selectedPositionId}
-            onSelect={setSelectedPosition}
-            isLoading={isLoading}
-          />
-        </CardContent>
-              </Card>
-            </div>
+            <Card variant="bordered">
+              <CardHeader>
+                <CardTitle>Trades</CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">{openPositions.length} open, {(positions || []).length - openPositions.length} finished</p>
+              </CardHeader>
+              <CardContent className="p-0">
+                <PositionTable
+                  positions={positions || []}
+                  selectedId={selectedPositionId}
+                  onSelect={setSelectedPosition}
+                  isLoading={isLoading}
+                />
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>
